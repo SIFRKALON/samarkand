@@ -103,6 +103,7 @@ input.txt::placeholder{color:#A9A4CC}
 .tabs button[aria-selected="true"]{background:var(--blue);color:#fff}
 .panel{background:var(--card);border:2.5px solid var(--navy);border-radius:14px;padding:11px 14px;margin:0 0 .8em;box-shadow:3px 3px 0 var(--blue2)}
 .panel p:last-child{margin-bottom:0!important}
+.verse{margin:.75em 0 0;padding:.45em .8em .5em;border-left:4px solid #FF4FA3;background:#FFF0F7;border-radius:4px 12px 12px 4px}.verse p{margin:0 0 .3em!important;font-size:19px;line-height:1.25;color:#26275F}.verse span.at{font-family:var(--pix);font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--blue)}
 .store{display:flex;flex-direction:column;gap:9px;margin:.3em 0 .7em}
 .item{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;padding:8px 11px;background:var(--card);border:2.5px solid var(--navy);border-radius:14px}
 .item .nm{font-size:21px;line-height:1.05;min-width:0}
@@ -213,7 +214,7 @@ const hash = n => { let x = Math.imul((n | 0) ^ 0x9e3779b9, 0x85ebca6b); x ^= x 
 const strHash = s => { let h = 7; for (let i = 0; i < s.length; i++) h = (Math.imul(h, 31) + s.charCodeAt(i)) | 0; return h; };
 const listJoin = a => a.length <= 1 ? (a[0] || '') : a.slice(0, -1).join(', ') + ' and ' + a[a.length - 1];
 const plural = (n, one, many) => `${n} ${n === 1 ? one : (many || one + 's')}`;
-const money = n => `${(Math.round(n * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: Math.abs(n % 1) > 0.004 ? 2 : 0, maximumFractionDigits: 2 })} tangas`;
+const money = n => `${(Math.round(n * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: Math.abs(n % 1) > 0.004 ? 2 : 0, maximumFractionDigits: 2 })} ${Math.abs(n - 1) < 0.004 ? 'tanga' : 'tangas'}`;
 const cap = s => s[0].toUpperCase() + s.slice(1);
 
 /* ---------- dates (1404, Gregorian, like Clavijo) ---------- */
@@ -231,7 +232,7 @@ const FEAST_START = dayOf(8, 8), FEAST_END = dayOf(10, 27);
 const SND = (() => {
   let ac = null, out, busM, busF, revM, revF, dly, noiseBuf;
   let music = store.get(KEY.music, true), fx = store.get(KEY.sound, true);
-  let cueName = null, cue = null, step = 0, nextTime = 0, key = 62, errLogged = false, silentEl = null;
+  let cueName = null, cue = null, step = 0, nextTime = 0, key = 62, errLogged = false, silentEl = null, lastTry = 0;
   function silentWav() { const n = 4000, b = new ArrayBuffer(44 + n * 2), v = new DataView(b); const w = (o, s) => { for (let i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); }; w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVE'); w(12, 'fmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true); v.setUint32(24, 8000, true); v.setUint32(28, 16000, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true); return URL.createObjectURL(new Blob([b], { type: 'audio/wav' })); }
   const MUSIC_VOL = 0.42;
   const mtof = m => 440 * Math.pow(2, (m - 69) / 12);
@@ -396,7 +397,13 @@ const SND = (() => {
       try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch (e) {}
       if (!silentEl) { try { silentEl = new Audio(silentWav()); silentEl.loop = true; silentEl.volume = 0.01; const pr = silentEl.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {} }
       if (!ac && !init()) return;
-      if (ac.state === 'suspended') { try { ac.resume(); } catch (e) {} }
+      if (silentEl && silentEl.paused) { try { const pr = silentEl.play(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) {} }
+      if (ac.state !== 'running') {
+        const now = Date.now();
+        if (lastTry && now - lastTry > 1200) { try { ac.close(); } catch (e) {} ac = null; lastTry = 0; if (!init()) return; }
+        lastTry = now;
+        try { const p = ac.resume(); if (p && p.then) p.then(() => { lastTry = 0; }, () => {}); } catch (e) {}
+      } else lastTry = 0;
     },
     setMusic(on) { music = on; store.set(KEY.music, on); if (ac) busM.gain.setTargetAtTime(on ? MUSIC_VOL : 0, ac.currentTime, 0.15); if (on) { nextTime = 0; } },
     setFx(on) { fx = on; store.set(KEY.sound, on); },
@@ -445,8 +452,8 @@ const CREW = [
     lines: { plateau: 'When I marched west with the army, it took a whole year. Going home feels faster. Is that how it works?', khorasan: 'Did you know elephants cannot jump? Not even a little. I asked one.', desert: 'I am not scared of the desert. I am scared of the noises in the desert. That is different.', mountain: 'My mother lives on the other side of these mountains. She thinks I am dead. Surprise!', oasis: 'Smell that? Apricots. That is home.', goal: 'I was a drummer in Timur’s army until it forgot me in Tabriz. Now I am going home to my mother. I have a drum solo prepared.' } },
   { name: 'Aybike', from: 'Turkmen · from the Karakum', role: 'Camel handler', bio: 'Grew up in a felt tent among a thousand camels. Talks to the camels more than to people, and the camels seem to prefer it.', skill: 'Camels stay healthier; finds water',
     lines: { plateau: 'Bulbul does not like hills. Bulbul does not like anything, actually.', khorasan: 'fact', desert: 'This is my grandmother’s country. Black sand, white salt, no water you can see. There is water. You just have to know where.', mountain: 'Camels hate mountains. I hate mountains. We have a lot in common.', oasis: 'Too many trees. Where do they keep the sky?', goal: 'I have never seen a city bigger than a wedding. I would like to see the biggest one, once, and then go home.' } },
-  { name: 'Yaqub', from: 'Persian Jew · from Tabriz', role: 'Scribe and money changer', bio: 'Keeps the accounts, counts everything twice, and can write a letter in five languages and four kinds of handwriting.', skill: 'Better deals; can write a new travel letter',
-    lines: { plateau: 'By my count we have eaten a great deal of food since Tabriz, and the goat has eaten some of it. I am keeping a separate ledger for the goat.', khorasan: 'In Mashhad the money changers will offer you Herat coins at Samarkand rates. Let me do the talking.', desert: 'I have written letters in five languages, and none of them has a word for this much sand.', mountain: 'My cousin in Samarkand promised me a job writing contracts for Timur’s builders. He also promised me a horse once.', oasis: 'Bukhara has a Jewish quarter full of dyers and silk weavers. I have eleven cousins there. Possibly fourteen.', goal: 'My cousin says Timur’s builders need a scribe who can count. I can count. I am counting right now.' } },
+  { name: 'Yaqub', from: 'Persian Jew · from Tabriz', role: 'Scribe and translator', bio: 'Writes letters for people who can’t, in five languages and four kinds of handwriting. Collects proverbs the way other people collect coins. Is secretly writing a book about this trip.', skill: 'Talks to anyone in their own language; can write a new travel letter',
+    lines: { plateau: 'Every village on this road talks a little differently. Persian in the bazaar, Turkish with the horses, Armenian at the well. The camels speak only complaint.', khorasan: 'My grandfather read us Attar’s Conference of the Birds with a different voice for every bird. His hoopoe was magnificent. His sparrow was mostly him complaining about his knees.', desert: 'I have written letters in five languages, and none of them has a word for this much sand.', mountain: 'My cousin in Samarkand promised me a job writing contracts for Timur’s builders. He also promised me a horse once.', oasis: 'The Jews of Bukhara are dyers, mostly. My cousins there have blue hands up to the elbows. I have eleven cousins there. Possibly fourteen.', goal: 'I am writing a book about this journey. So far it is mostly about the goat.' } },
 ];
 const GUEST = { name: 'Davit', from: 'Georgian · from Tbilisi', bio: 'Taken in Timur’s raids on Georgia. His sister Nino was carried off to Samarkand to cut tiles for Timur’s mosque. He is going to find her.' };
 const CAMEL_POOL = [
@@ -474,7 +481,7 @@ const PRICES = { camels: 40, food: 0.15, coats: 10, bundles: 2, saddles: 10, ski
 const TRADERS = ['A Turkmen herder','An Armenian wine seller','A dyer from Yazd','A cloth merchant from Herat','A Kipchak horseman','A melon farmer','A pilgrim on his way home','A Genoese merchant who is very far from Genoa','A dervish with strong opinions','A Chinese envoy’s cook'];
 /* trade goods: buy where they come from, sell farther along the road */
 const WARES = {
-  silk: { one: 'bolt of silk', many: 'bolts of silk', base: 24, from: 'tabriz', note: 'raw silk from Gilan' },
+  wool: { one: 'bolt of scarlet wool', many: 'bolts of scarlet wool', base: 24, from: 'tabriz', note: 'Flemish cloth, by way of Genoa' },
   pepper: { one: 'sack of pepper', many: 'sacks of pepper', base: 22, from: 'sultaniyya', note: 'from India by way of Hormuz' },
   pistachios: { one: 'sack of pistachios', many: 'sacks of pistachios', base: 10, from: 'damghan', note: 'Damghan’s famous nuts' },
   turquoise: { one: 'pouch of turquoise', many: 'pouches of turquoise', base: 34, from: 'nishapur', note: 'from the mines above town' },
@@ -501,6 +508,11 @@ const LEGENDS = [
   { t: 'Nasreddin and Timur', s: 'Timur once asked Nasreddin how much he, Timur, would be worth if he were sold as a slave. Nasreddin thought hard and said: about fifty tangas. That is outrageous, said Timur. My belt alone is worth fifty tangas. Yes, said Nasreddin. I was counting the belt.', flag: 'nasreddin' },
   { t: 'The paper of Samarkand', s: 'After a great battle on the Talas River, Chinese prisoners taught the people of Samarkand how to make paper from rags and mulberry bark. Soon the whole world of Islam was writing on Samarkand paper: poems, contracts, Qurans, love letters and complaints about the price of paper.', flag: null },
   { t: 'The white stone well', s: 'Between Merv and the Oxus there is a well under a white stone the size of a sheep. The Turkmen keep it off every map. If you are on that road and thirsty, look for the white stone.', flag: 'hiddenWell' },
+  { t: 'Nasreddin’s pot', s: 'Nasreddin borrowed a cooking pot from his neighbor. When he gave it back, there was a tiny pot inside. “Your pot had a baby,” he said. The neighbor was delighted and kept both. A month later Nasreddin borrowed the pot again and never returned it. “I am so sorry,” he said. “Your pot has died.” “Pots can’t die!” shouted the neighbor. “You believed it could have a baby,” said Nasreddin.', flag: null },
+  { t: 'The tortoise and the two ducks', s: 'Two ducks and a tortoise lived by a pond that was drying up. The ducks offered to fly the tortoise to a new lake. He would bite the middle of a stick, and they would each hold an end. “Whatever happens, do not talk,” they said. Over a village, people pointed and laughed: look, ducks carrying a tortoise! The tortoise opened his mouth to say mind your own business. This one is from Kalila and Dimna, and storytellers always finish it by staring at someone in the audience who talks too much.', flag: null },
+  { t: 'Amar’s bottomless bag', s: 'Amar the trickster, best friend of the hero Amir Hamza, had a bag with no bottom. Into it went an army’s tents, three elephants, a sorcerer’s beard and an enemy king, still eating his dinner. When a giant asked what was in the bag, Amar said: only my lunch. The giant reached in to check and was never seen again. The bazaar storytellers can tell Hamza’s adventures for a whole year of evenings and still not finish.', flag: null },
+  { t: 'Rostam’s horse', s: 'Rostam, the greatest hero of the Shahnameh, lay down to sleep in a meadow full of reeds. A lion crept out to eat him. His horse Rakhsh, red as a rose, kicked the lion and bit it until it was dead. When Rostam woke up, he scolded Rakhsh for fighting alone. “If he had killed you, how would I carry my armor?” Rakhsh, who had just saved his life, did not look at him for the rest of the day.', flag: null },
+  { t: 'Shahrazad', s: 'A cruel king married a new bride every night and killed her every morning. Then Shahrazad married him. That night she told him a story and stopped at the most exciting part, so he let her live another day to finish it. She did this for a thousand and one nights. By the end the king had forgotten he ever wanted to kill anyone, and they had three children. Storytellers on the Silk Road still stop at the most exciting part. Then they pass the hat.', flag: null },
 ];
 
 const N = {
@@ -745,7 +757,7 @@ function typeEl(el, voice, onDone) {
   const chars = [];
   for (const n of nodes) { const frag = document.createDocumentFragment(); for (const ch of n.data) { const s = document.createElement('span'); s.className = 'tc'; s.textContent = ch; frag.appendChild(s); chars.push(s); } n.replaceWith(frag); }
   let i = 0;
-  scene.talking = true;
+  scene.talking = voice !== 'narrator';
   const t = { id: 0, finish: () => { for (; i < chars.length; i++) chars[i].classList.add('on'); scene.talking = false; if (onDone) { const f = onDone; onDone = null; f(); } } };
   const step = () => {
     if (typer !== t) return;
@@ -830,7 +842,7 @@ function runQueue(items, done) {
     if (it.type === 'death') return deathScreen(it.m, it.cause, step);
     if (it.type === 'choice') return choiceScreen(it, step);
     if (it.type === 'hunt') return huntGame({ bonus: it.bonus, onDone: step });
-    if (it.type === 'say') return sayScreen({ who: it.who, line: it.line, look: it.look, aside: it.aside, mode: it.mode || 'keep', next: step });
+    if (it.type === 'say') return sayScreen({ who: it.who, line: it.line, look: it.look, aside: it.aside, node: it.node, mode: it.mode || 'keep', next: step });
     if (it.type === 'fn') return it.fn(step);
     step();
   };
@@ -940,9 +952,9 @@ function updateHealth(rest, starving, thirsty, region) {
   const t = S.weather.temp;
   for (const m of a) {
     let d = 0;
-    if (!rest) d += S.army ? -1.6 : [0, -0.9, -2.1, -3.4][S.pace];
-    d += [0, 0.6, -0.5, -1.6][S.rations];
-    if (!m.sick && !m.inj) d += 0.5;
+    if (!rest) d += S.army ? -2 : [0, -1.3, -2.6, -4][S.pace];
+    d += [0, 0.4, -0.7, -1.8][S.rations];
+    if (!m.sick && !m.inj) d += 0.3;
     if (rest) d += (S.segFrom === 'rabat' && S.atNode ? 6 : 4) + (has('otabek') ? 1 : 0);
     if (t === 4) d -= 0.4;
     if (t === 5) d -= S.nightDays ? 0.6 : region === 'desert' ? 2.4 : 1.6;
@@ -960,7 +972,7 @@ function updateHealth(rest, starving, thirsty, region) {
     if (thirsty) d -= 10;
     m.hp = clamp(m.hp + d, 0, 100);
     let dead = m.hp <= 0;
-    if (!dead && (m.sick || m.inj) && m.hp < 22 && chance(m.sick === 'plague' ? 0.25 : 0.12)) dead = true;
+    if (!dead && (m.sick || m.inj) && m.hp < 22 && chance(m.sick === 'plague' ? 0.25 : 0.16)) dead = true;
     if (dead && S.flags.blessed) { S.flags.blessed = false; m.hp = 12; m.sick = null; m.inj = null; deaths.push({ saved: m }); continue; }
     if (dead) { const cause = causeOf(m, starving, thirsty, t <= 1 && coatsShort); m.alive = false; m.hp = 0; deaths.push({ m, cause }); }
   }
@@ -1093,7 +1105,7 @@ function stealable() {
 }
 function legendItem(L, how) {
   S.heard[L.t] = true; S.legends = Object.keys(S.heard).length; if (L.flag) S.flags[L.flag] = true;
-  return msg(`${how ? how + '<br><br>' : ''}${L.s}`, { title: L.t, sound: 'sparkle', date: false });
+  return msg(`${how ? how + '<br><br>' : ''}${L.s}`, { title: L.t, sound: 'sparkle', date: false, scene: { mode: 'fire' } });
 }
 const unheard = () => LEGENDS.filter(L => !S.heard[L.t]);
 
@@ -1126,8 +1138,8 @@ function dervishCurse() {
   return msg('The dervish looks at you for a long time and then laughs. You do not know why. That is worse.');
 }
 function storytellerEvent() {
-  const L = unheard()[0];
-  return { type: 'choice', title: 'Stories by the fire', who: 'p0', emo: 'sparkle', text: 'At a caravanserai fire, an old storyteller with one enormous eyebrow offers to tell a tale for two tangas. Or, he says, he will pay for a good one.', options: [
+  const U = unheard(), L = U.length ? pick(U) : null;
+  return { type: 'choice', title: 'Stories by the fire', scene: { mode: 'fire' }, who: 'p0', emo: 'sparkle', text: 'Every caravanserai has a fire, and every fire has a storyteller. This one has one enormous eyebrow, and he knows the whole Shahnameh, the adventures of Amir Hamza, the animal fables of Kalila and Dimna, half the Thousand and One Nights and an endless supply of Nasreddin. He will tell a tale for two tangas. Or, he says, he will pay for a good one.', options: [
     L ? { label: 'Pay for a story', sub: money(2), disabled: S.money < 2, run: () => { S.money -= 2; alive().forEach(m => m.hp = Math.min(100, m.hp + 3)); return legendItem(L, 'He leans into the firelight.'); } } : null,
     S.legends > 0 ? { label: 'Tell him one of yours', sub: 'stories are worth money here', run: () => { const p = 4 + S.legends * 2; S.money += p; return msg(`You tell him a story you heard on the road, with a few improvements. He listens with his whole eyebrow, then pays you ${money(p)}. “I will tell it better,” he says.`, { sound: 'coin' }); } } : null,
     { label: 'Go to sleep', run: () => msg('You fall asleep to the sound of someone else’s story. You dream about a camel who becomes a vizier.') },
@@ -1144,7 +1156,7 @@ function buzkashiEvent() {
   S.flags.buzkashi = true;
   return { type: 'choice', title: 'Buzkashi', who: 'goat', emo: '!', text: 'A crowd of horsemen is playing buzkashi: two teams fight over a goat carcass at full gallop. Their goat has fallen apart. A rider trots over and looks at your goat with great interest.', options: [
     { label: 'Absolutely not', run: () => msg('You put your arms around the goat. The rider shrugs and goes off to find a sheep.', { who: 'goat', emo: 'heart' }) },
-    { label: 'Ride in the game yourself', run: () => { if (chance(0.4)) { S.money += 40; S.food += 30; return msg('You borrow a horse, grab the carcass, get knocked off, grab it again, and somehow score. The crowd roars. They give you 40 tangas and a lamb’s worth of meat.', { sound: 'good' }); } const m = leader(); m.inj = 'arm'; m.injDays = ri(8, 14); m.hp = Math.max(1, m.hp - 12); return msg('You last about as long as it takes to say buzkashi. You have broken an arm.', { sound: 'bad' }); } },
+    { label: 'Ride in the game yourself', sub: 'a minigame', run: () => ({ type: 'fn', fn: next => buzkGame({ onDone: items => runQueue(items, next) }) }) },
   ] };
 }
 function ghulEvent() {
@@ -1170,8 +1182,9 @@ const BANTER = [
   [2, 'Otabek asks how many days until Samarkand. You tell him. He asks again an hour later.'],
   [3, 'Aybike spends the evening combing the burrs out of Lola’s wool and telling her secrets.'],
   [3, 'fact'],
-  [4, 'Yaqub counts the money twice, frowns, counts it a third time and announces it is all there.'],
-  [4, 'Yaqub writes a letter to his cousin in Samarkand, announcing your arrival. He plans to deliver it himself.'],
+  [4, 'Yaqub writes by firelight in a little book. When you ask what it is about, he covers the page. “The journey,” he says. “Mostly the goat.”'],
+  [4, 'Yaqub teaches everyone to say thank you in Persian, Turkish, Armenian, Arabic and Hebrew. The goat learns none of them.'],
+  [4, 'Yaqub writes a letter for a herder who wants to tell his sister he is alive. He will not take any money for it.'],
 ];
 function banterEvent() {
   const opts = BANTER.filter(([i]) => crewAlive(i)); if (!opts.length) return null;
@@ -1179,7 +1192,7 @@ function banterEvent() {
   return msg(line === 'fact' ? `Aybike says: “${pick(CAMEL_FACTS)}”` : line, { who: 'p' + i, emo: pick(['heart', 'note', 'sparkle']) });
 }
 const EVENTS = [
-  { w: c => 9 + (S.pace - 1) * 4 + (S.rations - 1) * 3 + (avgHp() < 50 ? 4 : 0) + (S.army ? 3 : 0), run: c => { const m = healthyPick(); return m ? sickEvent(m, pickIllness(c)) : null; } },
+  { w: c => 11 + (S.pace - 1) * 4 + (S.rations - 1) * 3 + (avgHp() < 50 ? 4 : 0) + (S.army ? 3 : 0), run: c => { const m = healthyPick(); return m ? sickEvent(m, pickIllness(c)) : null; } },
   { w: c => c.rest ? 1 : 4, run: c => {
       const m = healthyPick(); if (!m || m.inj) return null;
       const kind = weighted({ arm: 25, leg: 14, bite: S.camels ? 30 : 0, scorpion: (c.region === 'desert' || c.region === 'khorasan') ? 15 : 0, snake: (c.region === 'desert' || c.region === 'oasis') ? 10 : 0 });
@@ -1233,7 +1246,7 @@ const EVENTS = [
       const toll = ri(2, 6) * 5;
       return { type: 'choice', title: 'Riders', who: 'p0', emo: '!', text: `Riders block the road and ask for a toll of ${toll} tangas. Will you pay?`, options: [
         { label: `Pay ${toll} tangas`, sub: `you have ${money(S.money)}`, run: () => { if (S.money >= toll) { S.money -= toll; return msg('You pay. They thank you and ride off. Everyone is very polite about it.'); } const f = Math.min(Math.floor(S.food), ri(40, 90)); S.food -= f; return msg(`You do not have ${toll} tangas. They take ${f} pounds of food instead.`); } },
-        has('yaqub') ? { label: 'Let Yaqub negotiate', run: () => { const t2 = Math.floor(toll / 2); if (S.money >= t2 && chance(0.7)) { S.money -= t2; return msg(`Yaqub talks for twenty minutes about the cost of horses, the price of bread and his cousin’s wedding. The riders accept ${t2} tangas just to make him stop.`, { who: 'p4', emo: 'sparkle' }); } return msg('Yaqub begins to negotiate. The riders do not enjoy it. They take the full toll and a little extra for their time.', { sound: 'bad' }); } } : null,
+        has('yaqub') ? { label: 'Let Yaqub talk to them', run: () => { if (chance(0.6)) return msg('Yaqub greets the riders in three languages until he finds theirs. He asks after their mothers, their horses and their mothers’ horses. Soon everyone is sharing bread, and nobody mentions the toll again.', { who: 'p4', emo: 'sparkle' }); if (S.money >= toll) S.money -= toll; else S.food = Math.max(0, S.food - 50); return msg('Yaqub greets them in three languages. They answer in a fourth, which is mostly swords. You pay the toll.', { sound: 'bad' }); } } : null,
         { label: 'Refuse', run: () => {
             if (chance(0.5)) return msg('They talk it over and decide you are not worth the trouble.');
             const taken = []; if (S.camels > 1) { const nms = loseCamels(Math.min(S.camels - 1, ri(1, 2))); taken.push(listJoin(nms)); }
@@ -1286,6 +1299,8 @@ function graveCheck(prev, now) {
     if (gr.seg !== key || gr.run === S.run || S.seenGraves.includes(gr.id)) continue;
     if (gr.at > prev && gr.at <= now) {
       S.seenGraves.push(gr.id);
+      if ((S.flags.gravesShown || 0) >= 2 || !chance(0.5)) continue;
+      S.flags.gravesShown = (S.flags.gravesShown || 0) + 1;
       out.push(msg(`You pass a grave by the road. It reads:<br><span class="good">Here lies ${esc(gr.name)}.${gr.epitaph ? ' ' + esc(gr.epitaph) : ''}</span>`, { scene: { mode: 'grave', still: true } }));
     }
   }
@@ -1933,6 +1948,10 @@ function musicCue() {
     case 'raft': return 'raft';
     case 'grave': return 'grave';
     case 'arrive': return scene.late ? 'late' : 'feast';
+    case 'show': return 'town';
+    case 'fire': return 'title';
+    case 'reunion': return 'feast';
+    case 'buzk': return 'hunt';
   }
   return lastCue;
 }
@@ -1955,6 +1974,10 @@ function loop(ts) {
     else if (scene.mode === 'hunt') { huntUpdate(dt); huntDraw(); }
     else if (scene.mode === 'raft') { raftUpdate(dt); raftDraw(); }
     else if (scene.mode === 'haggle') { haggleUpdate(dt); haggleDraw(); }
+    else if (scene.mode === 'show') drawShow();
+    else if (scene.mode === 'fire') drawFire();
+    else if (scene.mode === 'reunion') drawReunion();
+    else if (scene.mode === 'buzk') { buzkUpdate(dt); buzkDraw(); }
   } catch (err) { console.error(err); }
   try { const c = forcedCue || musicCue(); lastCue = c; SND.tick(c); } catch (e) {}
   syncToggles();
@@ -1965,7 +1988,7 @@ function loop(ts) {
 const placeName = id => { const n = N[id]; return n ? (n.label || n.name.replace(/^the /, '')) : ''; };
 const wonderNote = id => `<div class="got"><p>Added to your gifts for Timur: <b>${WONDERS[id].name}</b>. ${WONDERS[id].desc}</p></div>`;
 function getWonder(id, text) { S.wonders[id] = S.day; sfx.sparkle(); save(); return msg(text, { title: 'A gift for Timur!', after: wonderNote(id), sound: 'fanfare' }); }
-const wareSell = (k, at) => Math.round(WARES[k].base * (1 + Math.max(0, (MILE[at] || 0) - MILE[WARES[k].from]) / 200) * (1 + (hash(strHash(at + k)) - 0.5) * 0.2) * (has('yaqub') ? 1.08 : 1));
+const wareSell = (k, at) => Math.round(WARES[k].base * (1 + Math.max(0, (MILE[at] || 0) - MILE[WARES[k].from]) / 200) * (1 + (hash(strHash(at + k)) - 0.5) * 0.2));
 const wareBuy = (k, at) => at === WARES[k].from ? WARES[k].base : Math.round(wareSell(k, at) * 1.25);
 function crewHTML(i) {
   const c = CREW[i], m = S && S.party[i];
@@ -2027,7 +2050,8 @@ function crewScreen() {
 function goatScreen() {
   setScene('walk', { moving: false });
   setTimeout(() => emote('goat', 'heart', 2.6), 600);
-  screen(`<h2>Oh, and a goat.</h2><p class="big">${tw('Nobody remembers buying it. It’s coming anyway.')}</p>`, [{ label: 'Of course it is', primary: true, onClick: giftScreen }]);
+  const R2 = [['Yayyy!', 'The goat accepts your joy as no more than it deserves, and eats your sleeve to celebrate.', 'heart'], ['Oh no.', 'Oh yes. The goat heard that. The goat will remember that.', '!'], ['Please no.', 'The goat considers your request, then eats it.', 'melon'], ['Of course it is', 'Of course it is. The goat looks pleased that somebody finally understands.', 'sparkle']];
+  screen(`<h2>Oh, and a goat.</h2><p class="big">${tw('Nobody remembers buying it. It’s coming anyway.')}</p>`, R2.map(([l, r, e], i) => ({ label: l, primary: i === 0, onClick: () => { emote('goat', e, 2.6); screen(`<h2>The goat</h2><p class="big">${tw(r)}</p>`, [{ label: 'Continue', primary: true, onClick: giftScreen }]); } })));
 }
 function giftScreen() {
   setScene('walk', { moving: false });
@@ -2043,7 +2067,7 @@ function monthScreen() {
 }
 function storeIntro() {
   sayScreen({ mode: 'store', who: 'Mirza Ali', look: MIRZA, before: `<p class="date">${dateStr(S.day)} · Tabriz bazaar</p>`,
-    line: 'Welcome, welcome! Off to Samarkand? Everyone is off to Samarkand. You will need camels. Lots of camels. And silk! Silk is cheap here and dear in the east.',
+    line: 'Welcome, welcome! Off to Samarkand? Everyone is off to Samarkand. You will need camels. Lots of camels. And wool! Scarlet wool from Flanders, by way of the Genoese. Here it is cheap. In Samarkand they fight over it. Silk? No, no. Silk goes the other way.',
     after: `<p>You have <b>${money(S.money)}</b>. Prices go up the farther you get from Tabriz.</p>`,
     buttons: [{ label: 'Let’s shop', primary: true, onClick: () => storeScreen('tabriz', departTabriz) }] });
 }
@@ -2057,8 +2081,8 @@ const ADVICE = {
   saddles: 'Packsaddles break. Bring spares, or bring a saddle maker.',
   skins: 'Each holds a day of water for your whole party. Ten is about right.',
   letter: 'A scribe writes down whence you come and whither you go. No letter, no Oxus ferry.',
-  rue: 'Wild rue seeds. Burn them and the smoke drives off the evil eye.',
-  bead: 'A blue glass bead. Hang it on someone and the evil eye looks elsewhere.',
+  rue: 'Wild rue seeds, called isfand. When someone catches the evil eye, you drop a pinch on the coals and wave the crackling smoke around them. Each pouch is one cure.',
+  bead: 'A blue glass bead, a nazar. Hang it on a camel and the evil eye mostly looks elsewhere, so your crew catches it far less often. It also cures someone who already has it.',
 };
 function storeScreen(id, after, haggled) {
   const nd = N[id], m = (nd.store || 1) * (haggled || 1), tabriz = id === 'tabriz';
@@ -2177,21 +2201,31 @@ function stuckScreen() {
   ]);
 }
 function menuScreen() {
-  travelling = false; if (scene.mode === 'walk') scene.moving = false;
-  const at = S.atNode ? N[S.segFrom] : null;
-  const opts = [
-    { label: 'Keep going', primary: true, onClick: () => at ? leaveNode() : travelScreen() },
-    { label: 'Check supplies and crew', onClick: suppliesScreen },
+  travelling = false;
+  if (scene.mode === 'walk') scene.moving = false;
+  else if (scene.mode !== 'node') setScene(S.atNode ? 'node' : 'walk', S.atNode ? { node: S.segFrom } : {});
+  const at = S.atNode ? N[S.segFrom] : null, id = S.segFrom;
+  const opts = [{ label: 'Keep going', primary: true, onClick: () => at ? leaveNode() : travelScreen() }];
+  if (at) {
+    if (at.hist || at.food || at.sights || FOODS[id] || SHOWS[id]) opts.push({ label: 'Explore', sub: 'sights, history, food and shows', onClick: () => exploreScreen() });
+    if (at.talk) opts.push({ label: 'Talk to people', onClick: () => talkScreen() });
+    if (at.store) opts.push({ label: 'Shop at the bazaar', onClick: () => storeScreen(id, () => { setScene('node', { node: id }); menuScreen(); }) });
+  }
+  opts.push({ label: at && at.store ? 'Stay at the caravanserai' : 'Rest', sub: at && at.store ? 'rest in comfort, a few coins a night' : (alive().some(m => m.hp < 50) ? 'your crew could use it' : null), onClick: restScreen });
+  if (!at) opts.push({ label: 'Go hunting', sub: `${S.arrows} arrows`, onClick: huntMenu });
+  opts.push({ label: 'Supplies and crew', onClick: suppliesScreen });
+  opts.push({ label: 'More…', sub: 'map, chat, pace, rations, trade', onClick: moreScreen });
+  screen(`<h2>${at ? esc(placeName(id)) : 'By the side of the road'}</h2>${statusHTML()}`, opts, { hud: hudLine() });
+}
+function moreScreen() {
+  screen(`<h2>More</h2>`, [
     { label: 'Chat with the crew', onClick: chatScreen },
     { label: 'Look at the map', onClick: mapScreen },
     { label: 'Change pace', sub: S.army ? 'the army decides' : 'now: ' + PACES[S.pace], onClick: paceScreen },
     { label: 'Change rations', sub: 'now: ' + RATIONS[S.rations], onClick: rationsScreen },
-    { label: at && at.store ? 'Stay at the caravanserai' : 'Rest', sub: at && at.store ? 'rest in comfort, a few coins a night' : null, onClick: restScreen },
-    { label: 'Trade', onClick: () => tradeScreen(menuScreen) },
-  ];
-  if (at) { if (at.talk) opts.push({ label: 'Talk to people', onClick: () => talkScreen() }); if (at.store) opts.push({ label: 'Shop at the bazaar', onClick: () => storeScreen(S.segFrom, () => { setScene('node', { node: S.segFrom }); menuScreen(); }) }); if (at.hist || at.food || at.sights) opts.push({ label: 'Explore', sub: 'sights, history and food', onClick: () => exploreScreen() }); }
-  else opts.push({ label: 'Go hunting', sub: `${S.arrows} arrows`, onClick: huntMenu });
-  screen(`<h2>${at ? esc(placeName(S.segFrom)) : 'By the side of the road'}</h2>${statusHTML()}`, opts, { hud: hudLine() });
+    { label: 'Trade', sub: 'takes a day', onClick: () => tradeScreen(menuScreen) },
+    { label: 'Back', primary: true, onClick: menuScreen },
+  ], { hud: hudLine() });
 }
 function hearts(hp) { const n = clamp(Math.ceil(hp / 20), 0, 5); return `<span class="hearts" role="img" aria-label="${healthLabel(hp)} health">${'♥'.repeat(n)}<span class="o">${'♥'.repeat(5 - n)}</span></span>`; }
 function suppliesScreen() {
@@ -2204,7 +2238,7 @@ function suppliesScreen() {
   screen(`<h2>Supplies</h2><dl class="cards">
     <dt>Food</dt><dd>${Math.floor(S.food)} lb</dd><dt>Water skins</dt><dd>${S.skins} (${S.water.toFixed(1)} full)</dd><dt>Felt coats</dt><dd>${S.coats}</dd><dt>Arrows</dt><dd>${S.arrows}</dd>
     <dt>Packsaddles</dt><dd>${S.saddles} spare</dd><dt>Travel letter</dt><dd>${S.letter === 'forged' ? 'yes (Yaqub’s)' : S.letter ? 'yes' : '<span class="warn">no</span>'}</dd>
-    <dt>Purse</dt><dd>${money(S.money)}</dd>${goods.length ? `<dt>Goods</dt><dd>${listJoin(goods)}</dd>` : ''}${S.items.rue || S.items.bead ? `<dt>Charms</dt><dd>${listJoin([S.items.rue ? plural(S.items.rue, 'pouch', 'pouches') + ' of wild rue' : '', S.items.bead ? plural(S.items.bead, 'blue bead') : ''].filter(Boolean))}</dd>` : ''}
+    <dt>Purse</dt><dd>${money(S.money)}</dd>${goods.length ? `<dt>Goods</dt><dd>${listJoin(goods)}</dd>` : ''}${S.items.rue || S.items.bead ? `<dt>Charms</dt><dd>${listJoin([S.items.rue ? plural(S.items.rue, 'pouch', 'pouches') + ' of wild rue' : '', S.items.bead ? plural(S.items.bead, 'blue bead') : ''].filter(Boolean))}<br><span class="dim small">Burn rue when someone catches the evil eye. The bead keeps it away.</span></dd>` : ''}
     ${S.receipts ? `<dt>Receipts</dt><dd>${S.receipts}, from Timur’s officers</dd>` : ''}<dt>Goat</dt><dd>1 (doing great)</dd></dl>
     <h2>Gifts for Timur</h2>${wonders ? `<div class="wonders">${wonders}</div>` : '<p class="dim">Nothing yet. Keep your eyes open.</p>'}
     <h2>Your crew</h2><div class="roster">${party}</div>
@@ -2263,7 +2297,7 @@ function makeOffer() {
     let wq = want === 'food' ? ri(3, 10) * 10 : want === 'arrows' ? ri(1, 3) * 20 : ri(1, want === 'camels' ? 1 : 3);
     if (want === 'camels' && S.camels <= 1) continue;
     wq = Math.min(wq, Math.floor(S[want])); if (wq <= 0) continue;
-    const val = wq * GOODS[want][2] * rnd(0.5, 0.92) * (has('yaqub') ? 1.15 : 1);
+    const val = wq * GOODS[want][2] * rnd(0.5, 0.92);
     let n = Math.max(1, Math.floor(val / GOODS[give][2]));
     if (give === 'food' || give === 'arrows') n = Math.max(10, Math.floor(n / 10) * 10);
     if (give === 'camels' && n > 1) continue;
@@ -2275,7 +2309,7 @@ function tradeScreen(back, free) {
   if (!free) loseDays(1);
   const o = chance(0.85) ? makeOffer() : null;
   if (!o) return screen(`<p class="date">${dateStr(S.day)}</p><p class="big">${tw('You spend the whole day looking for someone to trade with. Nobody wants to trade today.')}</p>`, [{ label: 'Continue', primary: true, onClick: back }]);
-  screen(`<p class="date">${dateStr(S.day)}</p><h2>A trade offer</h2><p class="big">${tw(`${o.who} offers you ${gq(o.give, o.gq)} for ${gq(o.want, o.wq)}.`)}</p><p class="dim">You have ${gq(o.want, Math.floor(S[o.want]))}.${has('yaqub') ? ' Yaqub has already argued the price up a little.' : ''}</p>`, [
+  screen(`<p class="date">${dateStr(S.day)}</p><h2>A trade offer</h2><p class="big">${tw(`${o.who} offers you ${gq(o.give, o.gq)} for ${gq(o.want, o.wq)}.`)}</p><p class="dim">You have ${gq(o.want, Math.floor(S[o.want]))}.</p>`, [
     { label: 'Deal!', primary: true, onClick: () => {
       if (o.want === 'camels') loseCamels(o.wq); else S[o.want] -= o.wq;
       let note = 'It’s a deal. Everyone shakes hands.';
@@ -2320,7 +2354,7 @@ function roadTalk() {
 
 /* ---------- exploring towns ---------- */
 const SIGHTS = {
-  khayyam: { label: 'Visit Omar Khayyam’s grave', run: () => { alive().forEach(m => m.hp = Math.min(100, m.hp + 4)); return msg('Rose petals have blown over the grave. Someone has left a jug of wine, which seems right. Yaqub reads a verse from memory:<br><br><i>A book of verses underneath the bough, a jug of wine, a loaf of bread, and thou.</i><br><br>Everyone feels a little better about everything.', { title: 'Khayyam’s grave' }); } },
+  khayyam: { label: 'Visit Omar Khayyam’s grave', run: () => { alive().forEach(m => m.hp = Math.min(100, m.hp + 4)); return msg(`Rose petals have blown over the grave. Someone has left a jug of wine, which seems right. ${has('yaqub') ? 'Yaqub' : 'A student'} recites a verse from memory:<br><br>A Book of Verses underneath the Bough,<br>A Jug of Wine, a Loaf of Bread—and Thou<br>Beside me singing in the Wilderness—<br>Oh, Wilderness were Paradise enow!<br><br>Everyone feels a little better about everything. <span class="good">Everyone gains 4 health.</span>`, { title: 'Khayyam’s grave' }); } },
   turquoise: { label: 'Visit the turquoise sellers', run: () => S.wonders.turquoise ? msg('The turquoise sellers recognize you and wave.') : ({ type: 'choice', title: 'The turquoise market', text: 'Trays of blue stones glitter in the sun. One seller has a turquoise as big as an egg, the blue of the sky at noon.', options: [{ label: 'Buy the egg-sized turquoise', sub: `${money(120)} · you have ${money(S.money)}`, disabled: S.money < 120, run: () => { S.money -= 120; return getWonder('turquoise', 'He wraps it in silk and tells you it is lucky. If it turns green, the luck has been used.'); } }, { label: 'Just look', run: () => msg('You look. It is very blue.') }] }) },
   shrine: { label: 'Visit the shrine of Imam Reza', run: () => ({ type: 'choice', title: 'The shrine', text: 'The golden dome blazes over a courtyard full of pilgrims: Persians, Arabs, Turks, Indians, families from everywhere. Doves wheel overhead. People whisper their wishes to the silver grille around the tomb.', options: [
       { label: 'Tie a green cloth to the grille and make a wish', sub: `give ${money(5)} to the shrine`, disabled: S.money < 5, run: () => { S.money -= 5; const sk = alive().find(m => m.sick); if (sk) { sk.sick = null; sk.hp = Math.min(100, sk.hp + 10); } if (S.flags.shrineCure) S.flags.shrineCure = null; return S.wonders.ribbon ? msg('You tie the cloth and make your wish.') : getWonder('ribbon', `You tie a strip of green cloth to the grille and make a wish. A shrine servant gives you another strip that has touched the tomb.${sk ? ' On the way out, ' + who(sk) + ' says they feel much better.' : ''}`); } },
@@ -2331,16 +2365,17 @@ const SIGHTS = {
   stories: { label: 'Swap stories at the caravanserai fire', run: () => storytellerEvent() },
 };
 function exploreScreen(tab = 'look') {
-  const id = S.segFrom, nd = N[id];
+  const id = S.segFrom, nd = N[id], sh = SHOWS[id], vs = VERSES[id], town = nd.kind === 'town';
   const tabs = [['look', 'Look around'], nd.hist ? ['hist', 'History'] : null, nd.legend ? ['legend', 'Legend'] : null].filter(Boolean);
   const body = tab === 'hist' ? nd.hist : tab === 'legend' ? nd.legend : nd.look;
   const b = [];
-  if (nd.food) b.push({ label: `Try the ${nd.food[0]}`, sub: nd.food[2] ? money(nd.food[2]) : 'free', disabled: S.money < nd.food[2] || S.flags['ate' + id], onClick: () => { S.money -= nd.food[2]; S.flags['ate' + id] = true; alive().forEach(m => m.hp = Math.min(100, m.hp + 5)); runQueue([msg(nd.food[1], { who: 'p0', emo: 'heart' })], () => exploreScreen(tab)); } });
+  if (sh) b.push({ label: sh.label, sub: S.flags['show' + id] ? 'you saw it' : (sh.sub || sh.title), disabled: !!S.flags['show' + id], onClick: () => { S.flags['show' + id] = true; runQueue([showItem(id, sh)], () => exploreScreen(tab)); } });
+  foodsFor(id).forEach(([name, text, cost, fx], k) => b.push({ label: `Try the ${name}`, sub: `${cost ? money(cost) : 'free'} · ${fxLabel(fx)}`, disabled: S.money < cost || !!S.flags['ate' + id + k], onClick: () => { S.money -= cost; S.flags['ate' + id + k] = true; runQueue([eatFood(text, fx)], () => exploreScreen(tab)); } }));
   (nd.sights || []).forEach(k => b.push({ label: SIGHTS[k].label, disabled: !!S.flags['sight' + id + k], onClick: () => { S.flags['sight' + id + k] = true; runQueue([SIGHTS[k].run()], () => exploreScreen(tab)); } }));
-  if (has('otabek') && !S.flags['show' + id] && nd.store) b.push({ label: 'Watch the street show', onClick: () => { S.flags['show' + id] = true; alive().forEach(m => m.hp = Math.min(100, m.hp + 4)); runQueue([msg(pick(['Tightrope walkers dance on a rope strung between two rooftops, high over the square, while drummers play below. The goat tries to follow them up the pole.', 'A puppeteer acts out the story of Nasreddin and his donkey. Otabek laughs so hard he has to sit down.', 'A man with a dancing bear and a drum. The bear seems to be having a better time than the man.']), { who: 'goat', emo: '!' })], () => exploreScreen(tab)); } });
-  b.push({ label: 'Back', primary: !b.length, onClick: () => { setScene('node', { node: id }); menuScreen(); } });
+  b.push({ label: town ? 'Back to town' : 'Back', onClick: () => { setScene('node', { node: id }); menuScreen(); } });
+  b.push({ label: town ? 'Leave town' : 'Move on', sub: 'back on the road', onClick: () => leaveNode() });
   setScene('node', { node: id });
-  screen(`<div class="eyebrow">${esc(placeName(id))}</div><div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button type="button" role="tab" aria-selected="${k === tab}" data-tab="${k}">${l}</button>`).join('')}</div><div class="panel"><p>${tw(body)}</p></div>`, b);
+  screen(`<div class="eyebrow">${esc(placeName(id))}</div><div class="tabs" role="tablist">${tabs.map(([k, l]) => `<button type="button" role="tab" aria-selected="${k === tab}" data-tab="${k}">${l}</button>`).join('')}</div><div class="panel"><p>${tw(body)}</p>${tab === 'look' && vs ? `<div class="verse"><p>${tw(vs[0])}</p><span class="at">${esc(vs[1])}</span></div>` : ''}</div>`, b);
   textEl.querySelectorAll('[data-tab]').forEach(el => el.addEventListener('click', () => { sfx.tap(); exploreScreen(el.dataset.tab); }));
 }
 
@@ -2376,6 +2411,7 @@ function arriveAt(id) {
   const pre = [];
   if (S.flags.shrineCure && N[id].kind === 'town') { const m = S.party.find(p => p.name === S.flags.shrineCure && p.alive); S.flags.shrineCure = null; if (m && m.sick) pre.push(cureMsg(m, 'At the town shrine, {n} sits by the tomb for an hour and comes out yawning. The jinn has gone.')); }
   if (id === 'nishapur' && S.army) { S.army = false; pre.push(msg('Near Nishapur the army turns off toward its summer pastures. An officer tells you the road ahead is all yours. You’re not sure he meant it kindly.', { scene: { mode: 'node', node: id } })); }
+  pre.push(...beatsFor(id));
   if (pre.length) return runQueue(pre, () => landmarkScreen(id));
   landmarkScreen(id);
 }
@@ -2390,6 +2426,7 @@ function landmarkScreen(id) {
 }
 function leaveNode() {
   const id = S.segFrom;
+  setScene('node', { node: id });
   if (id === 'sultaniyya' && !S.flags.davit) return davitScene();
   if (id === 'sultaniyya' && !S.armyAsked) {
     S.armyAsked = true;
@@ -2428,7 +2465,8 @@ function riverArrive(id) {
   const rv = N[id].river, m = monthOf(S.day);
   S.river = { id, depth: Math.max(0.5, rv.depth[m] + rnd(-0.4, 0.4)), width: ri(rv.width[0], rv.width[1]), localIdx: 0 };
   setScene('river', { node: id });
-  screen(`<p class="date">${dateStr(S.day)}</p><h2>${esc(placeName(id))}</h2><p>${tw(N[id].look)}</p>`, [{ label: 'Continue', primary: true, onClick: () => riverScreen(id) }]);
+  if (N[id].oxus) sfx.fanfare();
+  screen(`<p class="date">${dateStr(S.day)}</p><h2>${esc(placeName(id))}</h2><p>${tw(N[id].look)}</p>${N[id].oxus ? `<p class="dim">${tw(OXUS_NOTE)}</p>` : ''}`, [{ label: 'Continue', primary: true, onClick: () => riverScreen(id) }]);
 }
 function riverScreen(id) {
   const nd = N[id], rs = S.river, rv = nd.river;
@@ -2438,7 +2476,7 @@ function riverScreen(id) {
   const opts = [];
   if (!nd.oxus) {
     opts.push({ label: 'Wade across', sub: rs.depth < 2.5 ? 'looks shallow enough' : rs.depth < 3.5 ? 'risky' : 'very risky', onClick: () => crossDone(ford()) });
-    opts.push({ label: 'Float over on blown-up sheepskins', onClick: () => crossDone(floatAcross()) });
+    opts.push({ label: 'Float over on blown-up sheepskins', sub: 'you steer', onClick: () => rs.depth < 1.6 ? crossDone(floatAcross()) : raftGame({ small: true, onDone: items => crossDone(items) }) });
     opts.push({ label: `Pay ${rv.who[0].toLowerCase() + rv.who.slice(1)} to take you`, sub: money(rv.ferry), disabled: S.money < rv.ferry, onClick: () => ferry(id) });
   } else {
     if (S.letter === true) opts.push({ label: 'Show your letter and take the ferry', sub: money(rv.ferry), disabled: S.money < rv.ferry, onClick: () => ferry(id) });
@@ -2482,8 +2520,8 @@ function floatAcross() {
   return [msg('You blow up the sheepskins, lash them under a frame and float across. The camels swim beside you, offended.')];
 }
 function ferry(id) {
-  const rv = N[id].river, wait = ri(0, 2);
-  screen(`<h2>${esc(rv.who)}</h2><p class="big">${esc(rv.who)} will take you across for ${money(rv.ferry)}.</p><p>${wait ? `You’ll have to wait ${plural(wait, 'day')}.` : 'You can go right now.'} Your purse holds ${money(S.money)}.</p>`, [
+  const rv = N[id].river, ox = N[id].oxus, wait = ox ? ri(1, 4) : ri(0, 2);
+  screen(`<h2>${esc(rv.who)}</h2><p class="big">${esc(rv.who)} will take you across for ${money(rv.ferry)}.</p><p>${ox ? `Timur’s officers have to inspect every bale, count every camel and write it all down twice. You’ll wait ${plural(wait, 'day')} in line.` : wait ? `You’ll have to wait ${plural(wait, 'day')}.` : 'You can go right now.'} Your purse holds ${money(S.money)}.</p>`, [
     { label: 'Pay and cross', primary: true, onClick: () => { S.money -= rv.ferry; loseDays(wait); sfx.coin(); crossDone([msg(N[id].oxus ? 'The ferryman reads your letter twice, nods, and takes you across. The Oxus is very, very wide. Then it’s behind you.' : 'The ferry takes you across safe and dry.')]); } },
     { label: 'Never mind', onClick: () => riverScreen(id) },
   ]);
@@ -2494,6 +2532,8 @@ function bribe(id) {
   sfx.bad(); runQueue([msg('The ferryman takes your money and then remembers the rules. You’re still on this side of the Oxus.')], () => riverScreen(id));
 }
 function crossDone(items) {
+  const ox = S.river && N[S.river.id] && N[S.river.id].oxus;
+  if (ox) { alive().forEach(m => m.hp = Math.min(100, m.hp + 5)); items = [].concat(items, [msg(`You are across the Oxus! Behind you, Iran. Ahead, Turan: the land beyond the river.${has('otabek') ? ' Otabek kneels and kisses the mud, which he regrets.' : ''} Even the goat seems moved. <span class="good">Everyone gains 5 health.</span>`, { title: 'Beyond the river', sound: 'fanfare', who: 'goat', emo: 'heart' })]); }
   runQueue(items, () => { if (!leader().alive) return gameOver(); S.river = null; S.atNode = false; save(); setScene('walk'); travelScreen(); });
 }
 
@@ -2523,9 +2563,9 @@ function huntGame({ bonus, onDone }) {
   if (S.arrows <= 0) { runQueue([msg('You have no arrows.')], onDone); return; }
   loseDays(1);
   const region = curRegionForHunt();
-  hunt = { t: 0, dur: 25, region, animals: [], arrows: [], kills: [], pops: [], taps: [], spawn: 0.4, total: 0, bonus, aim: 1, onDone, flash: '', over: false, bushes: Array.from({ length: 8 }, (_, i) => [hash(i + S.day) * W, 92 + hash(i * 3 + S.day) * 70]) };
+  hunt = { t: 0, dur: 22, region, animals: [], arrows: [], kills: [], pops: [], taps: [], spawn: 0.4, total: 0, bonus, aim: 1, onDone, flash: '', over: false, bushes: Array.from({ length: 8 }, (_, i) => [hash(i + S.day) * W, 92 + hash(i * 3 + S.day) * 70]) };
   travelling = false; setScene('hunt', { region });
-  screen(`<h2>${bonus ? 'The ring hunt!' : 'Hunting'}</h2><p class="big">${bonus ? 'Thousands of riders close the ring, and animals pour in from every side.' : 'You head out into the brush with your bow.'}</p><p class="dim">Tap an animal to shoot. Every tap costs one arrow.</p>`, [{ label: 'Stop hunting', onClick: () => huntEnd() }]);
+  screen(`<h2>${bonus ? 'The ring hunt!' : 'Hunting'}</h2><p class="big">${bonus ? 'Thousands of riders close the ring, and animals pour in from every side.' : 'You head out into the brush with your bow.'}</p><p class="dim">Tap to shoot. Every tap costs an arrow. Arrows drop as they fly, so aim a little high and ahead of runners. A near miss sends them bolting.</p>`, [{ label: 'Stop hunting', onClick: () => huntEnd() }]);
   huntHud();
 }
 function huntHud() { if (!hunt) return; setHud(`<span>Arrows <b>${S.arrows}</b></span><span>Bagged <b>${hunt.total}</b> lb</span><span>0:${String(Math.max(0, Math.ceil(hunt.dur - hunt.t))).padStart(2, '0')}</span>${hunt.flash ? `<span class="good">${hunt.flash}</span>` : ''}`); }
@@ -2534,7 +2574,7 @@ function huntShoot(p) {
   S.arrows--; sfx.shoot();
   const ox = 120, oy = 150, dx = p.x - ox, dy = p.y - oy, L = Math.hypot(dx, dy) || 1;
   hunt.aim = dx >= 0 ? 1 : -1;
-  hunt.arrows.push({ x: ox, y: oy, vx: dx / L * 300, vy: dy / L * 300, life: 0.9 });
+  hunt.arrows.push({ x: ox, y: oy, vx: dx / L * 230, vy: dy / L * 230, life: 1.3 });
   hunt.taps.push({ x: p.x, y: p.y, t0: hunt.t });
   huntHud();
 }
@@ -2542,20 +2582,22 @@ function huntUpdate(dt) {
   if (!hunt || hunt.over) return;
   hunt.t += dt; hunt.spawn -= dt;
   if (hunt.spawn <= 0) {
-    hunt.spawn = hunt.bonus ? rnd(0.5, 0.9) : rnd(1.1, 2.2);
-    const kind = weighted(HUNT_POOL[hunt.region]), A = ANIMALS[kind], dir = chance(0.5) ? 1 : -1;
-    hunt.animals.push({ kind, x: dir > 0 ? -A.w * 2 - 2 : W + 2, y: rnd(84, 150 - A.h * 2), dir, sp: A.sp * 1.4 * rnd(0.8, 1.2) * (hunt.bonus ? 0.8 : 1), pause: 0, dead: false });
+    hunt.spawn = hunt.bonus ? rnd(0.8, 1.2) : rnd(1.6, 2.8);
+    const kind = weighted(HUNT_POOL[hunt.region]), A = ANIMALS[kind], dir = chance(0.5) ? 1 : -1, y0 = rnd(84, 150 - A.h * 2);
+    const herd = (kind === 'gazelle' || kind === 'urial') && chance(0.5) ? ri(2, 3) : 1;
+    for (let k = 0; k < herd; k++) hunt.animals.push({ kind, x: dir > 0 ? -A.w * 2 - 2 - k * 30 : W + 2 + k * 30, y: clamp(y0 + rnd(-10, 10), 84, 150 - A.h * 2), dir, sp: A.sp * 1.9 * rnd(0.85, 1.15) * (hunt.bonus ? 0.75 : 1), pause: 0, dead: false });
   }
-  for (const a of hunt.animals) { if (a.dead) continue; if (a.pause > 0) a.pause -= dt; else { a.x += a.dir * a.sp * dt; if (chance(dt * 0.25)) a.pause = rnd(0.4, 1.2); } }
-  hunt.animals = hunt.animals.filter(a => a.dead || (a.x > -50 && a.x < W + 50));
+  for (const a of hunt.animals) { if (a.dead) continue; if (a.pause > 0) a.pause -= dt; else { a.x += a.dir * a.sp * (a.flee ? 1.8 : 1) * dt; if (!a.flee && chance(dt * 0.25)) a.pause = rnd(0.3, 0.9); } }
+  hunt.animals = hunt.animals.filter(a => a.dead || (a.x > -130 && a.x < W + 130));
   for (const ar of hunt.arrows) {
-    ar.x += ar.vx * dt; ar.y += ar.vy * dt; ar.life -= dt;
+    ar.vy += 120 * dt; ar.x += ar.vx * dt; ar.y += ar.vy * dt; ar.life -= dt;
     for (const a of hunt.animals) {
       if (a.dead) continue; const A = ANIMALS[a.kind];
-      if (ar.x >= a.x - 2 && ar.x <= a.x + A.w * 2 + 2 && ar.y >= a.y - 4 && ar.y <= a.y + A.h * 2 + 2) { a.dead = true; a.deadT = hunt.t; ar.life = 0; hunt.total += A.lb; hunt.kills.push(a.kind); hunt.flash = `${ANIMAL_NAME[a.kind]}, ${A.lb} lb`; hunt.pops.push({ x: a.x + A.w, y: a.y - 6, s: `+${A.lb}`, t0: hunt.t }); sfx.hit(); }
+      if (!a.flee && Math.hypot(ar.x - a.x - A.w, ar.y - a.y - A.h) < 26 && !(ar.x >= a.x && ar.x <= a.x + A.w * 2 && ar.y >= a.y && ar.y <= a.y + A.h * 2)) { a.flee = true; a.pause = 0; }
+      if (ar.x >= a.x && ar.x <= a.x + A.w * 2 && ar.y >= a.y && ar.y <= a.y + A.h * 2) { a.dead = true; a.deadT = hunt.t; ar.life = 0; hunt.total += A.lb; hunt.kills.push(a.kind); hunt.flash = `${ANIMAL_NAME[a.kind]}, ${A.lb} lb`; hunt.pops.push({ x: a.x + A.w, y: a.y - 6, s: `+${A.lb}`, t0: hunt.t }); sfx.hit(); }
     }
   }
-  hunt.arrows = hunt.arrows.filter(a => a.life > 0 && a.x > -5 && a.x < W + 5 && a.y > -5);
+  hunt.arrows = hunt.arrows.filter(a => a.life > 0 && a.x > -5 && a.x < W + 5 && a.y > -5 && a.y < H + 5);
   hunt.pops = hunt.pops.filter(p => hunt.t - p.t0 < 1.1); hunt.taps = hunt.taps.filter(p => hunt.t - p.t0 < 0.3);
   if (Math.floor(hunt.t * 4) !== Math.floor((hunt.t - dt) * 4)) huntHud();
   if (hunt.t >= hunt.dur || (S.arrows <= 0 && !hunt.arrows.length)) huntEnd();
@@ -2598,10 +2640,10 @@ function huntEnd() {
 
 /* ---------- rafting the Oxus (gets faster as you go; stay out of the lantern light) ---------- */
 let raft = null; const keys = { left: false, right: false };
-function raftGame({ night, onDone }) {
-  raft = { t: 0, dur: 28, x: 106, steer: null, obs: [], spawn: 0.8, night, hit: 0, results: [], caught: false, stuck: 0, lanterns: 0, onDone, over: false, lit: 0 };
+function raftGame({ night, small, onDone }) {
+  raft = { small: !!small, t: 0, dur: small ? 16 : 36, x: 106, steer: null, obs: [], spawn: 0.8, night, hit: 0, results: [], caught: false, stuck: 0, lanterns: 0, onDone, over: false, lit: 0 };
   travelling = false; setScene('raft');
-  screen(`<h2>${night ? 'Night crossing' : 'Sheepskin float'}</h2><p class="big">${night ? 'You wait for dark, puff up the sheepskins and push off. Somewhere out there is a lantern.' : 'You puff up the sheepskins and push off. The ferrymen watch with interest.'}</p><p class="dim">Touch and drag on the river to steer, or use the arrow keys. Dodge rocks, snags, sandbars and whirlpools. The current gets faster near the far bank${night ? '. If the lantern light touches you, you’re caught' : ''}.</p>`, []);
+  screen(`<h2>${night ? 'Night crossing' : 'Sheepskin float'}</h2><p class="big">${night ? 'You wait for dark, puff up the sheepskins and push off. Somewhere out there is a lantern.' : small ? 'You blow up the sheepskins, lash a frame across them and push off. The camels swim alongside, offended.' : 'You puff up the sheepskins and push off. The ferrymen watch with interest.'}</p><p class="dim">Touch and drag on the river to steer, or use the arrow keys. Dodge rocks, snags, sandbars and whirlpools. The current gets faster near the far bank${night ? '. If the lantern light touches you, you’re caught' : ''}.</p>`, []);
   raftHud();
 }
 function raftHud() { if (!raft) return; setHud(`<span>Far bank <b>${Math.min(100, Math.floor(raft.t / raft.dur * 100))}%</b></span><span>Bumps <b>${raft.hit}</b></span>${raft.flash ? `<span class="warn">${raft.flash}</span>` : ''}`); }
@@ -2616,12 +2658,12 @@ function raftLoss(kind) {
 }
 function raftUpdate(dt) {
   if (!raft || raft.over) return;
-  const prog = raft.t / raft.dur, speed = raft.stuck > 0 ? 0 : 52 + prog * 60;
+  const prog = raft.t / raft.dur, speed = raft.stuck > 0 ? 0 : (raft.small ? 44 : 60) + prog * (raft.small ? 40 : 72);
   if (raft.stuck > 0) raft.stuck -= dt; else raft.t += dt;
   if (speed) raft.spawn -= dt;
   if (raft.spawn <= 0) {
-    raft.spawn = rnd(0.55, 0.95) * (1 - prog * 0.45);
-    const kind = weighted({ rock: 30, snag: 20, sandbar: 12, whirl: 12, lantern: raft.night && raft.lanterns < 3 && raft.t > 5 ? 9 : 0 });
+    raft.spawn = rnd(0.55, 0.95) * (raft.small ? 1.35 : 0.8) * (1 - prog * 0.45);
+    const kind = weighted({ rock: 30, snag: 20, sandbar: 12, whirl: raft.small ? 4 : 14, lantern: raft.night && raft.lanterns < 4 && raft.t > 5 ? 10 : 0 });
     if (kind === 'lantern') raft.lanterns++;
     const w = kind === 'sandbar' ? ri(40, 62) : kind === 'snag' ? ri(26, 38) : kind === 'whirl' ? 20 : kind === 'lantern' ? 30 : ri(16, 22);
     raft.obs.push({ kind, x: rnd(30, 210 - w), y: -20, w, h: kind === 'sandbar' ? 14 : kind === 'snag' ? 8 : 16, vx: kind === 'lantern' ? (chance(0.5) ? 26 : -26) : 0, done: false });
@@ -2691,13 +2733,13 @@ function haggleGame(id, done) {
   const L = id === 'tabriz' ? MIRZA : lookFor('A shopkeeper in ' + N[id].name);
   hag = { t: 0, round: 0, rounds: 3, mult: 1, x: 0, dir: 1, speed: 130, zone: [90, 130], log: [], done, look: L, wait: 0 };
   setScene('haggle', { keeper: L, who: 'shop' + id });
-  screen(`<h2>Haggling</h2><p class="big">Tap the screen when the needle is in the green. Three tries. Every hit knocks the price down.</p><p class="dim" id="haglog">${has('yaqub') ? 'Yaqub cracks his knuckles.' : 'The shopkeeper smiles politely.'}</p>`, [{ label: 'Give up and pay full price', onClick: () => { const d = hag.done; hag = null; d(1); } }]);
+  screen(`<h2>Haggling</h2><p class="big">Tap the screen when the needle is in the green. Three tries. Every hit knocks the price down.</p><p class="dim" id="haglog">The shopkeeper smiles politely.</p>`, [{ label: 'Give up and pay full price', onClick: () => { const d = hag.done; hag = null; d(1); } }]);
 }
 const HAG_WIN = ['“You are robbing me!”', '“My children will go hungry!”', '“For you, a special price. Do not tell anyone.”'], HAG_LOSE = ['“Ha! No.”', '“That is an insult to my grandfather.”', '“The price just went up.”'];
 function haggleTap() {
   if (!hag || hag.wait > 0) return;
   const hit = hag.x >= hag.zone[0] && hag.x <= hag.zone[1];
-  hag.mult *= hit ? (has('yaqub') ? 0.9 : 0.92) : 1.03; hag.round++; hag.wait = 0.9; hag.flash = hit ? 'win' : 'lose';
+  hag.mult *= hit ? 0.92 : 1.03; hag.round++; hag.wait = 0.9; hag.flash = hit ? 'win' : 'lose';
   hit ? sfx.coin() : sfx.bad();
   const el = $('#haglog'); if (el) el.textContent = plainq(hit ? pick(HAG_WIN) : pick(HAG_LOSE));
   scene.talking = true; setTimeout(() => { scene.talking = false; }, 700);
@@ -2723,7 +2765,7 @@ function haggleDraw() {
 
 /* ---------- deaths & endings ---------- */
 function deathText(m, cause) { if (cause === 'drowned') return m.leader ? 'You have drowned.' : `${esc(m.name)} has drowned.`; return `${m.leader ? 'You have' : esc(m.name) + ' has'} died of ${cause}.`; }
-const EULOGY = { Anahit: 'She would want everyone to keep drinking boiled water.', Otabek: 'He never got to see his mother. The goat will not leave his drum alone.', Aybike: 'The camels refuse to eat that night.', Yaqub: 'The accounts are perfectly in order.' };
+const EULOGY = { Anahit: 'She would want everyone to keep drinking boiled water.', Otabek: 'He never got to see his mother. The goat will not leave his drum alone.', Aybike: 'The camels refuse to eat that night.', Yaqub: 'His book stops in the middle of a sentence about the goat.' };
 function deathScreen(m, cause, next) {
   travelling = false; setScene('grave');
   sfx.death();
@@ -2761,16 +2803,19 @@ function arrivalSamarkand() {
 }
 function reunions(then) {
   const items = [];
-  if (has('otabek')) items.push(msg('Otabek drops his bag in the middle of the street and runs. A woman at a doorway near the bazaar screams his name. He was right about the drum solo. It is very long and nobody minds.', { title: 'Otabek is home', sound: 'sparkle' }));
-  if (S.guest) { S.flags.reunited = true; items.push(msg('At the half-built mosque, Davit walks along the rows of tile cutters calling a name. Halfway down, a girl drops her chisel. Nobody gets any work done for the rest of the afternoon.', { title: 'Davit finds Nino', sound: 'sparkle' })); }
-  if (has('yaqub')) items.push(msg('Yaqub’s cousin is real, and so is the job. The horse is still not real.', { who: 'p4', emo: 'sparkle' }));
+  const MOM = { robe: '#FF6B4A', trim: '#FFF3A6', hat: 'scarf', hatc: '#FFFFFF', skin: 2 }, NINO = { robe: '#E2505F', trim: '#FFFFFF', hat: 'scarf', hatc: '#14B8A6', skin: 0 };
+  if (has('otabek')) items.push(msg(`Otabek drops his bag in the middle of the street and runs. A woman in a doorway near the bazaar screams his name.${S.flags.otRing ? ' He gives her the tiny turquoise ring. It fits.' : ''} Then comes the drum solo. It is very long, and nobody minds.`, { title: 'Otabek is home', sound: 'sparkle', date: false, scene: { mode: 'reunion', a: LOOKS[2], b: MOM, prop: S.flags.otRing ? 'ring' : 'drum' } }));
+  if (S.guest) { S.flags.reunited = true; items.push(msg(`At the half-built mosque, Davit walks along the rows of tile cutters calling a name. Halfway down, a girl drops her chisel.${S.flags.bird ? ' He gives her the wooden bird he carved on the road. She sets it on her workbench, where it will watch her cut tiles for years.' : ''} Nobody gets any work done for the rest of the afternoon.`, { title: 'Davit finds Nino', sound: 'sparkle', date: false, scene: { mode: 'reunion', a: GLOOK, b: NINO, prop: S.flags.bird ? 'bird' : null } })); }
+  if (has('anahit')) items.push({ type: 'say', who: 'Anahit', look: LOOKS[1], node: 'samarkand', mode: 'talk', line: 'There is a hospital here that treats fevers with sherbet and sadness with music. They have offered me a place. My teacher at Tatev is going to hate this. I am going to write him a very long letter.' });
+  if (has('aybike')) items.push({ type: 'say', who: 'Aybike', look: LOOKS[3], node: 'samarkand', mode: 'talk', line: 'I have seen the biggest city in the world. It is too big. Tomorrow I am buying four camels and going home to the Karakum.', aside: 'At the city gate she turns around. “Bring the goat to visit,” she says. “The camels will ask.”' });
+  if (has('yaqub')) items.push({ type: 'say', who: 'Yaqub', look: LOOKS[4], node: 'samarkand', mode: 'talk', line: 'My book is finished. I have called it The Samarkand Trail. There is a chapter about each of you. The longest chapter is about the goat.', aside: 'His cousin is real, and so is the job. The horse is still not real.' });
   runQueue(items, then);
 }
 function dazzleScreen() {
   setScene('arrive', { late: false });
   sfx.sparkle();
-  screen(`<h2>The center of the world</h2><p>${tw('Then you just stand there and look.')}</p><p>${tw('Turquoise domes blaze against the sky. There are rose gardens and melon stalls, silk from China, glass from Damascus, painters from Tabriz and stonecutters from Delhi. Plenty of those craftspeople did not come by choice. Timur’s armies carried them off from their own cities, and now they are building his.')}</p>${S.guest ? '' : `<p>${tw('Somewhere up on the scaffolding of the great mosque, a Georgian girl is cutting tiles. You never learn her name.')}</p>`}<p class="big">${tw('It is the most beautiful thing you have ever seen.')}</p>`,
-    [{ label: 'Present your gift to Timur', primary: true, onClick: giftCeremony }]);
+  screen(`<h2>The center of the world</h2><p>${tw('Then you just stand there and look.')}</p><p>${tw('Turquoise domes blaze against the sky. There are rose gardens and melon stalls, silk from China, glass from Damascus, painters from Tabriz and stonecutters from Delhi. Plenty of those craftspeople did not come by choice. Timur’s armies carried them off from their own cities, and now they are building his.')}</p>${S.guest ? '' : `<p>${tw('Somewhere up on the scaffolding of the great mosque, a Georgian girl is cutting tiles. You never learn her name.')}</p>`}<p>${tw('The Castilian ambassador is writing everything down: whole roast horses, sheep’s heads, rice in every color, towers of melons, and wine poured from golden jugs until the guests are carried home.')}</p><p class="big">${tw('It is the most beautiful thing you have ever seen.')}</p>`,
+    [{ label: 'Present your gift to Timur', primary: true, onClick: giftCeremony }, { label: 'Read about Samarkand', sub: 'history', onClick: () => screen(`<div class="eyebrow">Samarkand</div><h2>History</h2><div class="panel"><p>${tw(SAMARKAND_HIST)}</p></div>`, [{ label: 'Back', primary: true, onClick: dazzleScreen }]) }]);
 }
 function giftCeremony() {
   setScene('arrive', { late: false });
@@ -2808,6 +2853,7 @@ function scoreScreen(feast, gift) {
     [{ label: 'See the Top Ten', primary: true, onClick: () => topTenScreen(S.run) }, { label: 'Back to the title', onClick: titleScreen }]);
 }
 function resumeScreen() {
+  if (S.goods && S.goods.silk) { S.goods.wool = (S.goods.wool || 0) + S.goods.silk; delete S.goods.silk; }
   if (S.atNode) {
     const nd = N[S.segFrom];
     if (nd.kind === 'river' && S.river) return riverScreen(S.segFrom);
@@ -2823,6 +2869,7 @@ cv.addEventListener('pointerdown', ev => {
   if (scene.mode === 'hunt') { ev.preventDefault(); return huntShoot(toV(ev)); }
   if (scene.mode === 'haggle') { ev.preventDefault(); return haggleTap(); }
   if (scene.mode === 'raft' && raft) { ev.preventDefault(); raft.steer = toV(ev).x; try { cv.setPointerCapture(ev.pointerId); } catch (e) {} return; }
+  if (scene.mode === 'buzk' && bz) { ev.preventDefault(); bz.target = toV(ev); bz.drag = true; try { cv.setPointerCapture(ev.pointerId); } catch (e) {} return; }
   if (!S) return;
   const p = toV(ev);
   if (scene.mode === 'walk') {
@@ -2841,10 +2888,11 @@ cv.addEventListener('pointerdown', ev => {
     if (best) emote(best, best === 'goat' ? pick(['heart', '!', '?', 'melon']) : best[0] === 'c' ? pick(['z', 'heart', '?']) : pick(['heart', 'note', 'sparkle', '?']));
   }
 });
-cv.addEventListener('pointermove', ev => { if (scene.mode === 'raft' && raft && raft.steer != null) raft.steer = toV(ev).x; });
-['pointerup', 'pointercancel'].forEach(t => cv.addEventListener(t, () => { if (raft) raft.steer = null; }));
+cv.addEventListener('pointermove', ev => { if (scene.mode === 'raft' && raft && raft.steer != null) raft.steer = toV(ev).x; if (scene.mode === 'buzk' && bz && bz.drag) bz.target = toV(ev); });
+['pointerup', 'pointercancel'].forEach(t => cv.addEventListener(t, () => { if (raft) raft.steer = null; if (bz) bz.drag = false; }));
 document.addEventListener('keydown', ev => {
-  if (scene.mode === 'raft') { if (ev.key === 'ArrowLeft' || ev.key === 'a') { keys.left = true; ev.preventDefault(); } if (ev.key === 'ArrowRight' || ev.key === 'd') { keys.right = true; ev.preventDefault(); } }
+  if (scene.mode === 'raft' || scene.mode === 'buzk') { if (ev.key === 'ArrowLeft' || ev.key === 'a') { keys.left = true; ev.preventDefault(); } if (ev.key === 'ArrowRight' || ev.key === 'd') { keys.right = true; ev.preventDefault(); } }
+  if (scene.mode === 'buzk') { if (ev.key === 'ArrowUp' || ev.key === 'w') { keys.up = true; ev.preventDefault(); } if (ev.key === 'ArrowDown' || ev.key === 's') { keys.down = true; ev.preventDefault(); } }
   if (scene.mode === 'haggle' && ev.key === ' ') { ev.preventDefault(); return haggleTap(); }
   const ae = document.activeElement, tag = ae && ae.tagName;
   if (tag === 'INPUT') { if (ev.key === 'Enter' && ae.classList.contains('txt')) { const b = choicesEl.querySelector('button.primary') || choicesEl.querySelector('button'); if (b && !b.disabled) { ev.preventDefault(); b.click(); } } return; }
@@ -2853,8 +2901,9 @@ document.addEventListener('keydown', ev => {
   if (/^[1-9]$/.test(ev.key)) { const b = choicesEl.querySelector(`button[data-key="${ev.key}"]`); if (b && !b.disabled) { ev.preventDefault(); b.click(); } return; }
   if ((ev.key === 'Enter' || ev.key === ' ') && tag !== 'BUTTON') { const b = choicesEl.querySelector('button.primary') || (choicesEl.children.length === 1 ? choicesEl.querySelector('button') : null); if (b && !b.disabled) { ev.preventDefault(); b.click(); } }
 });
-document.addEventListener('keyup', ev => { if (ev.key === 'ArrowLeft' || ev.key === 'a') keys.left = false; if (ev.key === 'ArrowRight' || ev.key === 'd') keys.right = false; });
-document.addEventListener('visibilitychange', () => { if (document.hidden && travelling) { travelling = false; scene.moving = false; menuScreen(); } });
+document.addEventListener('keyup', ev => { if (ev.key === 'ArrowLeft' || ev.key === 'a') keys.left = false; if (ev.key === 'ArrowRight' || ev.key === 'd') keys.right = false; if (ev.key === 'ArrowUp' || ev.key === 'w') keys.up = false; if (ev.key === 'ArrowDown' || ev.key === 's') keys.down = false; });
+document.addEventListener('visibilitychange', () => { if (document.hidden && travelling) { travelling = false; scene.moving = false; menuScreen(); } if (!document.hidden) { try { SND.unlock(); } catch (e) {} togState = ''; } });
+window.addEventListener('pageshow', () => { try { SND.unlock(); } catch (e) {} togState = ''; });
 const musBtn = $('#musBtn'), sfxBtn = $('#sfxBtn'), hintEl = $('#hint');
 let togState = '';
 function syncToggles() {
@@ -2868,8 +2917,358 @@ musBtn.addEventListener('click', ev => { ev.stopPropagation(); const wasRun = SN
 sfxBtn.addEventListener('click', ev => { ev.stopPropagation(); const wasRun = SND.running; SND.unlock(); SND.setFx(wasRun ? !SND.fxOn : true); if (!wasRun) SND.setMusic(true); togState = ''; if (SND.fxOn) setTimeout(() => sfx.coin(), 60); });
 ['pointerdown', 'touchend', 'click', 'keydown'].forEach(t => document.addEventListener(t, () => SND.unlock(), { capture: true, passive: true }));
 
+/* ---------- v4: more history, travelers and Timur ---------- */
+N.sultaniyya.hist += ' A century earlier, Marco Polo came through Tabriz, where your trip began, and called it a great city where merchants came from India, Baghdad, Mosul and Hormuz, and where Latin merchants bought goods from strange lands.';
+N.ordu.hist += ' Timur’s wars were some of the bloodiest in history. After Isfahan rebelled in 1387, each of his soldiers had to bring in a quota of heads. Chroniclers counted about seventy thousand, piled into towers outside the walls. Before the battle for Delhi in 1398, he had perhaps a hundred thousand prisoners killed in a single day, so they could not rise up behind his army. At Baghdad in 1401, each soldier owed him two heads, and there were a hundred and twenty towers. Some historians guess his wars killed seventeen million people, about one in every twenty people alive.';
+N.damghan.hist += ' Timur built towers like these all over his empire. They were cruel, and they were also advertising: every merchant who passed them carried the story on to the next town.';
+N.nishapur.hist += ' A century later the traveler Ibn Battuta, from Morocco, found Nishapur rebuilt and lovely, full of orchards and streams, and called it Little Damascus. He bought silk and velvet here to send home.';
+N.balkh.hist += ' Marco Polo passed by around 1273 and wrote that Balkh had once been a noble city of marble palaces, all ruined by the Tartars. Ibn Battuta came sixty years later and found it still empty: a city of ruins, with nobody living in it.';
+N.merv.hist += ' Just before the end, the geographer Yaqut spent three happy years in Merv’s ten great libraries, where he could borrow two hundred books at a time without paying a deposit. He escaped the Mongols with his notes and spent the rest of his life missing it.';
+N.bukhara.hist += ' When Ibn Battuta visited in 1333, most of its mosques, colleges and markets were still in ruins from the Mongols, and he complained that nobody left there knew anything about learning.';
+N.kesh.hist += ' Arrow wounds left him lame in his right leg and arm, so the Persians called him Timur-i Lang, Timur the Lame, which Europeans turned into Tamerlane. He probably could not read, but he loved history and chess, and outside burning Damascus in 1401 he spent weeks arguing with the great historian Ibn Khaldun, who found him fascinating and terrifying in about equal parts. Clavijo, the Castilian ambassador, saw this palace in 1404 and said its tilework was the finest in the world.';
+N.kesh.legend = 'People say that when Timur took Shiraz, he sent for the poet Hafez. “I have conquered half the world to make Samarkand and Bukhara beautiful,” he said, “and you would give them both away for a mole on a girl’s cheek?” Hafez bowed and showed him his ragged robe. “Sire, it is because of generosity like that that I am now so poor.” Timur laughed and gave him a robe of honor. It probably never happened. Everyone tells it anyway.';
+const OXUS_NOTE = 'This is the Oxus, the river the Persians call the Jayhun and the Turks the Amu. For a thousand years it has been the line between Iran and Turan, between the Persian world and the Turkish one. Everything on the far side, the Arabs simply call Mawarannahr: what lies beyond the river. Timur’s officers watch every ferry.';
+const SAMARKAND_HIST = 'Samarkand is older than Rome. Alexander the Great took it in 329 BC, when it was called Marakanda, and is said to have found it even more beautiful than he had heard. Chinese prisoners taught it to make paper in 751. Genghis Khan wrecked it in 1220. Ibn Battuta came through in 1333 and still called it one of the greatest and most beautiful cities in the world, with orchards along the river and its old palaces in ruins.<br><br>Then Timur made it his capital and filled it with the riches and the people of half of Asia. He named the villages around it Baghdad, Damascus, Cairo, Shiraz and Sultaniyya, after cities he had beaten, so everyone would know which was greatest. The price of all this beauty was paid in towers of skulls: seventy thousand heads at Isfahan, a hundred thousand prisoners killed outside Delhi, a hundred and twenty towers at Baghdad. Weavers from Damascus, stonecutters from Delhi and tile makers from Tabriz were marched here to build it.<br><br>A few months after the feast, Timur set out to conquer China. He died on the way, in February 1405, in the snow at Otrar. His blue-ribbed tomb, the Gur-i Amir, still stands in Samarkand.';
+
+/* ---------- v4: local foods, and what they do for you ---------- */
+const FOODS = {
+  sultaniyya: [[null, null, 2, { hp: 3, lb: 10 }]],
+  ray: [[null, 'You split a pomegranate the size of your head. Everyone ends up pink to the elbows. Anahit says pomegranate cools hot blood.', 2, { hp: 4, cure: 'fever' }]],
+  ordu: [[null, null, 0, { lb: 20 }], ['kumis', 'Some Chaghatai riders pass around a leather bag of kumis, fermented mare’s milk. It is fizzy, sour and a little bit alcoholic. Everyone pretends to like it until they actually do.', 0, { hp: 5 }]],
+  damghan: [[null, 'Damghan pistachios are famous all over Persia. You buy a sack. They are worth the fame, and they keep for months.', 3, { hp: 2, lb: 25 }]],
+  nishapur: [[null, null, 3, { hp: 6 }], ['rhubarb sherbet', 'The sherbet seller pours rhubarb syrup over snow carried down from the mountains wrapped in felt. It is pink, sour and so cold your teeth hurt.', 1, { hp: 2, cure: 'heat' }]],
+  mashhad: [[null, null, 3, { hp: 6 }], ['halwa', 'Pilgrims are handing out halwa, sticky with butter and rosewater, in memory of someone they lost. You eat it and say a prayer for someone you lost. Everyone does.', 0, { hp: 3 }]],
+  andkhoy: [[null, null, 1, { hp: 3, water: 1 }]],
+  balkh: [[null, null, 2, { hp: 2, lb: 20 }], ['mantu', 'Steamed dumplings stuffed with lamb and onion, under a blanket of yogurt. The cook says the recipe came with the Mongols. It is the only nice thing anyone says about the Mongols all day.', 2, { hp: 6 }]],
+  merv: [[null, null, 1, { hp: 3, water: 1 }]],
+  bukhara: [[null, null, 3, { hp: 8 }]],
+  kesh: [[null, null, 1, { hp: 2, lb: 10 }], ['tutmaj noodles', 'Hand-cut noodles in a sour yogurt broth with dried mint. The noodles came west from China with the caravans. The yogurt came from the sheep who is watching you eat. Everyone slurps.', 2, { hp: 6 }]],
+  rabat: [['samsa', 'The cook slaps triangles of dough stuffed with lamb, onion and cumin onto the hot inside wall of a clay tandoor. They come out blistered and golden. Somebody eats five. Nobody will say who.', 1, { hp: 5 }]],
+};
+function foodsFor(id) {
+  const nd = N[id], list = FOODS[id] || (nd.food ? [[null, null, nd.food[2], { hp: 4 }]] : []);
+  return list.map(([n, t, c, fx]) => [n || nd.food[0], t || nd.food[1], c, fx]);
+}
+const fxLabel = fx => [fx.hp ? `+${fx.hp} health` : '', fx.lb ? `+${fx.lb} lb food` : '', fx.water ? '+1 water' : '', fx.cure ? `cures ${SICK[fx.cure].die.replace(/^an? /, '')}` : ''].filter(Boolean).join(' · ');
+function eatFood(text, fx) {
+  const out = [];
+  if (fx.hp) { alive().forEach(m => m.hp = Math.min(100, m.hp + fx.hp)); out.push(`Everyone gains ${fx.hp} health.`); }
+  if (fx.lb) { S.food += fx.lb; out.push(`You gain ${fx.lb} pounds of food.`); }
+  if (fx.water && S.skins) { S.water = Math.min(S.skins, S.water + fx.water); out.push('It counts as a whole skin of water.'); }
+  if (fx.cure) { const m = alive().find(p => p.sick === fx.cure); if (m) { m.sick = null; m.care = 0; m.hp = Math.min(100, m.hp + 6); out.push(`${who(m)} ${m.leader ? 'are' : 'is'} cured!`); } else out.push(`If anyone gets ${SICK[fx.cure].die.replace(/^an? /, '')}, you know where to come.`); }
+  save();
+  return msg(`${text}<br><br><span class="good">${out.join(' ')}</span>`, { who: 'p0', emo: 'heart', sound: 'good' });
+}
+
+/* ---------- v4: an attraction and a verse in every town ---------- */
+const SHOWS = {
+  sultaniyya: { kind: 'polo', label: 'Watch the polo match', title: 'Chovgan', hp: 3, text: 'On the meadow below the dome, two teams play chovgan, which the Europeans will one day call polo: horses at full gallop, long hooked sticks and a ball of willow root. Persian kings have played it for a thousand years, and so have their queens. A herald shouts the score. Your camels watch in deep disapproval.' },
+  ray: { kind: 'rope', label: 'Watch the tightrope walker', title: 'The rope dancer', hp: 4, text: 'In the square, a rope walker in a pointed red hat dances along a rope strung as high as a minaret, with a long pole for balance and a drummer below. Halfway across, he sits down on the rope and eats an apple. The crowd loses its mind. The goat tries to climb the pole.' },
+  ordu: { kind: 'elephants', label: 'See the elephant parade', title: 'The elephants of Delhi', hp: 3, text: 'Timur’s war elephants, brought back from India, parade through the camp in painted howdahs with bells on their ankles. Each has a keeper from Delhi who talks to it all day in Hindavi. One elephant gently lifts somebody’s hat, looks inside it, and puts it back.' },
+  damghan: { kind: 'bear', label: 'Watch the dancing bear', title: 'The bear', hp: 3, text: 'A showman with a drum and a big brown bear. He beats the drum, and the bear stands up, turns in a slow circle and bows. Then the man passes a hat. Then the bear passes a hat. People give more to the bear.' },
+  nishapur: { kind: 'naqqal', label: 'Hear the Shahnameh storyteller', title: 'The naqqal', hp: 4, text: 'In the bazaar, a storyteller called a naqqal hangs up a painted cloth crowded with heroes, demons and a white-haired baby in a giant bird’s nest. He points with a stick and acts out the Shahnameh: Rostam and his horse Rakhsh, the seven trials, the White Div. He does all the voices. When Rostam fights the White Div, he knocks over his own stool, and the crowd throws coins.' },
+  mashhad: { kind: 'puppets', label: 'Watch the puppet show', title: 'Puppets', hp: 3, text: 'Behind a striped curtain, one man and a dozen puppets act out Nasreddin arguing with his donkey, his wife and a judge. The man does every voice, including the donkey. The donkey wins every argument.' },
+  merv: { kind: 'whirl', label: 'Watch the dervishes turn', title: 'The turning', hp: 4, text: 'In the shade of Sultan Sanjar’s great dome, a circle of dervishes chants the names of God and turns, slowly and then faster, arms out and white skirts flaring, until the whole ruined city seems to spin around them.' },
+  balkh: { kind: 'wrestle', label: 'Watch the wrestling', title: 'Kurash', hp: 3, text: 'In a ring of dust, two young men wrestle kurash, the old Turkic way: each grips the other’s belt sash, and whoever lands on his back loses. The winner gets a sheep. The loser also gets a sheep, because this is a very kind village with a lot of sheep.' },
+  bukhara: { kind: 'buzk', label: 'Ride in the buzkashi', title: 'a minigame' },
+  kesh: { kind: 'tiles', label: 'Visit the tile workshop', title: 'The tile cutters', hp: 2, text: 'In a workshop below the Aq Saray, tile cutters sit cross-legged chipping glazed tiles into tiny stars and petals, then fit them face down into patterns they cannot see until the whole panel is turned over. Many came from Tabriz and Isfahan, and not all of them came willingly. One lets you try. Your star looks like a potato.' },
+};
+function showItem(id, sh) {
+  if (sh.kind === 'buzk') return { type: 'fn', fn: next => buzkGame({ onDone: items => runQueue(items, next) }) };
+  alive().forEach(m => m.hp = Math.min(100, m.hp + sh.hp)); save();
+  return msg(`${sh.text}<br><br><span class="good">Everyone gains ${sh.hp} health.</span>`, { title: sh.title, sound: 'sparkle', scene: { mode: 'show', kind: sh.kind, node: id } });
+}
+const VERSES = {
+  sultaniyya: ['The children of Adam are limbs of one body,<br>made of a single essence.<br>When the world hurts one limb,<br>the others cannot rest.', 'Saadi of Shiraz, 1258'],
+  ray: ['I cry out against my eyes and my heart:<br>whatever the eye sees, the heart remembers.', 'Baba Taher of Hamadan · sung in the square'],
+  nishapur: ['The Moving Finger writes; and, having writ,<br>Moves on: nor all thy Piety nor Wit<br>Shall lure it back to cancel half a Line,<br>Nor all thy Tears wash out a Word of it.', 'Omar Khayyam of Nishapur, in FitzGerald’s English'],
+  mashhad: ['Thirty years I labored and suffered;<br>with this Persian, I brought Iran back to life.', 'Ferdowsi of Tus, the Shahnameh'],
+  balkh: ['Listen to the reed, how it tells its tale,<br>how it cries about being apart:<br>“Since they cut me from the reed bed,<br>men and women have wept to hear me.”', 'Rumi of Balkh, the Masnavi'],
+  bukhara: ['The scent of the Muliyan stream comes to me,<br>the memory of a dear friend comes to me.', 'Rudaki of Bukhara. The emir heard it in Herat and rode home without his boots.'],
+  kesh: ['If that Turk of Shiraz would take my heart in hand,<br>for the mole on her cheek I would give Samarkand and Bukhara.', 'Hafez of Shiraz · see the legend'],
+};
+
+/* ---------- v4: crew moments along the road ---------- */
+const BEATS = {
+  sultaniyya: [[2, 'I slept under the third minaret when the army was here. Somebody stole my boots. I am not going to do anything. I just want to see who is wearing them.']],
+  damghan: [[2, 'I saw them build those towers. I was twelve. They gave me horses to hold. Nobody told me what the towers were for until they were finished.', 'Anahit walks beside Otabek for the rest of the day. For once she doesn’t say anything about anybody’s liver.']],
+  nishapur: [[1, 'There was a great hospital here once, before the Mongols. Doctors came from Baghdad to study in it. I keep checking the bazaar stalls, hoping to find one page of their books wrapped around somebody’s cheese.'], [4, 'Attar lived here! The man who wrote the Conference of the Birds! I can hear my grandfather doing the hoopoe. This is going in my book.', 'He writes for an hour. When you look over his shoulder, the page says: The goat ate a hoopoe feather.']],
+  mashhad: [[2, 'I bought a ring for my mother. Turquoise, from Nishapur, very small. She has very small fingers. I think. It has been four years.', 'He shows everyone the ring. Then he shows everyone again.', 'otRing'], ['guest', 'I am carving a bird for Nino. When we were small she wanted a real one. This one cannot fly away.', 'It looks a little like the goat. He says that is on purpose.', 'bird']],
+  merv: [[3, 'This is where my country begins. Black sand, white salt, and my grandmother’s camels, somewhere out there. I can smell our felt tents from here. I can’t, really. But I can.']],
+  sardoba: [[1, 'Somebody built this so that strangers wouldn’t die. That is the best medicine on this whole road: water, in the right place. I want to be that kind of doctor. The kind who shows up with water.']],
+  andkhoy: [[3, 'My cousins are at the well. They say Bulbul is too old for this road. Bulbul heard them.', 'Bulbul now plans to live forever, out of spite.']],
+  balkh: [[4, 'Rumi was born here. He wrote that the reed flute cries because it was cut from the reed bed and wants to go home. That is everyone in this caravan. We are all reed flutes. Mostly we complain about the goat.']],
+  bukhara: [[4, 'Fourteen cousins! It was fourteen after all. They all want to be in my book. I have given each one a sentence. My aunt has demanded a second sentence.']],
+  irongates: [['guest', 'NINO!', 'Davit shouts his sister’s name into the canyon, and the cliffs shout it back eleven times. “She is closer now,” he says. “I can feel it.”']],
+  kesh: [[2, 'I know this road! That tree! I fell out of that tree! Samarkand is right there! Right THERE!', 'Nobody can make him walk at a normal speed for the rest of the day.']],
+  rabat: [[2, 'I know this place! I was sick in that corner! Samarkand is right there! Right THERE!', 'Nobody can make him walk at a normal speed for the rest of the day.']],
+};
+function beatsFor(id) {
+  const out = [];
+  (BEATS[id] || []).forEach(([i, line, aside, flag]) => {
+    if (S.flags['beat' + id + i]) return;
+    if (i === 'guest' ? !S.guest : !crewAlive(i)) return;
+    S.flags['beat' + id + i] = true; if (flag) S.flags[flag] = true;
+    out.push({ type: 'say', who: i === 'guest' ? 'Davit' : CREW[i].name, look: i === 'guest' ? GLOOK : LOOKS[i], line, aside, node: id, mode: 'talk' });
+  });
+  return out;
+}
+
+/* ---------- v4 scenes: street shows ---------- */
+function stageBg(t) {
+  sky(['#8FD0FF', '#AEDDFF', '#CBEAFF', '#E6F5FF', '#FFF6DD'], 70);
+  sunFace(206, 16, 7, t);
+  disc(120, 52, 20, TQ); R(TQ, 100, 52, 41, 16); R(TQH, 110, 38, 3, 9); R(GOLD, 119, 26, 3, 6);
+  R(MUD, 0, 66, W, 36); R(MUDL, 0, 66, W, 2);
+  for (let x = 4; x < W; x += 20) { R(MUDD, x, 78, 10, 24); disc(x + 5, 78, 5, MUDD); R(TQ, x + 1, 71, 8, 2); }
+  for (let x = 0; x < W; x++) { const y = 62 + Math.round(Math.sin(x / W * Math.PI * 3) * 3); px(P.woodD, x, y); if (x % 8 === 0) { const c = [P.pink, P.yellow, P.turq, P.coral][(x / 8) % 4]; for (let j = 0; j < 4; j++) R(c, x + j / 2, y + 1 + j, 4 - j, 1); } }
+  R('#F6D7A8', 0, 100, W, 80); R('#EFC896', 0, 150, W, 30); dither('#F6D7A8', 150);
+}
+function crowdRow(t, y) {
+  for (let i = 0; i < 20; i++) { const L = { robe: ROBES[i % 8], trim: TRIMS[i % 5], hat: ['turban', 'scarf', 'doppa', 'cap', 'kalpak'][i % 5], hatc: [P.white, P.pink, P.navy, P.coral, P.white][i % 5], skin: Math.floor(hash(i * 31 + 7) * 4) }; const j = reduceMotion ? 0 : Math.max(0, Math.round(Math.sin(t * 5 + i * 1.3) * 1.5)); drawPerson(2 + i * 12, y - j, 0, L); }
+}
+function crewRow(gy) {
+  if (!S) return; let x = 6;
+  alive().forEach(m => { const i = S.party.indexOf(m); ANCH['p' + i] = P2(x, gy, 0, LOOKS[i % 5]); x += 16; });
+  if (S.guest) { ANCH.guest = P2(x, gy, 0, GLOOK); x += 16; }
+  ANCH.goat = G2(x + 2, gy, 0, Math.floor(scene.t * 3) % 2 === 0, reduceMotion ? 0 : goatHop(scene.t));
+}
+/* horse and rider at 2x, facing dir (1 right, -1 left); x, y is the top-left */
+function riderC(x, y, frame, dir, robe, hatc) {
+  g.save(); g.translate(Math.round(x), Math.round(y) + 12); g.scale(2 * dir, 2);
+  const o = dir < 0 ? -13 : 0, Hc = '#E2A274', M = '#8A5240';
+  R(Hc, o, 3, 10, 4); R(Hc, o + 9, 1, 3, 3); R(Hc, o + 11, 2, 2, 2); px(P.navy, o + 11, 2); R(M, o + 8, 1, 2, 2); R(M, o - 1, 3, 1, 3);
+  R(robe, o + 4, -2, 3, 5); R(SKIN[(Math.abs(strHash(robe)) % 3) + 1], o + 4, -5, 3, 3); R(hatc || P.white, o + 4, -6, 3, 1); px(P.navy, o + 6, -4); px(P.blush, o + 6, -3);
+  rects(g, frame ? [[0, 7, 1, 3], [3, 7, 1, 3], [7, 7, 1, 3], [9, 7, 1, 3]] : [[1, 7, 1, 3], [2, 7, 1, 3], [8, 7, 1, 2], [8, 8, 1, 2]], o, 0, 1, 13, M);
+  g.restore();
+}
+const STORYTELLER = { robe: '#8F7FE0', trim: '#FFE14A', hat: 'turban', hatc: '#FFF3A6', skin: 1, beard: '#F6F1EA' };
+const SHOWDRAW = {
+  rope(t) {
+    const L = 34, Rr = 206, top = 46, ry = u => top + Math.sin(u * Math.PI) * 9;
+    for (const x of [L, Rr]) { R(P.woodD, x - 1, top - 2, 3, 112); R(P.wood, x, top - 2, 1, 112); }
+    for (let x = L; x <= Rr; x++) px(P.navy, x, ry((x - L) / (Rr - L)));
+    const u = 0.5 + 0.4 * Math.sin(t * 0.45), x = L + u * (Rr - L), y = ry(u), sit = (t % 9) > 6.5;
+    const hop = !sit && (t % 4) < 0.5 ? Math.round(Math.sin((t % 4) / 0.5 * Math.PI) * 5) : 0, tilt = Math.sin(t * 2.3) * 0.18;
+    for (let k = -24; k <= 24; k++) px(P.woodD, x + k, y - 15 - hop + k * tilt);
+    P2(x - 7, y + 1 - hop + (sit ? 4 : 0), 0, { robe: P.coral, trim: P.yellow, hat: 'cap', hatc: P.pink, skin: 2 });
+    if (sit) { disc(x + 11, y - 8, 2, P.leaf); px(P.coral, x + 11, y - 9); }
+    P2(176, 156, 0, { robe: P.turq, trim: P.white, hat: 'kalpak', skin: 3 });
+    const hit = Math.floor(t * 4) % 2; disc(196, 146, 5, P.coral); R(P.butter, 191, 141 + hit, 11, 2); if (hit) twinkle(196, 134, t, 1);
+  },
+  polo(t) {
+    R('#BFE38A', 0, 104, W, 52); dither('#BFE38A', 104); R('#A9D676', 0, 154, W, 2);
+    const cols = [P.coral, P.coral, P.blue, P.blue];
+    for (let k = 0; k < 4; k++) {
+      const ph = t * 0.85 + k * 1.7, cx = 120 + Math.sin(ph) * 92, dir = Math.cos(ph) >= 0 ? 1 : -1, cy = 114 + k * 9;
+      riderC(cx - 13, cy - 8, Math.floor(t * 8 + k) % 2, dir, cols[k], k % 2 ? P.white : P.yellow);
+      for (let j = 0; j < 8; j++) px(P.woodD, cx + dir * (4 + j * 0.7), cy + 4 + j * 1.7);
+    }
+    R(P.white, 120 + Math.sin(t * 0.85 + 0.5) * 96, 148 - Math.round(Math.abs(Math.sin(t * 6)) * 3), 3, 3);
+  },
+  elephants(t) {
+    for (let k = 0; k < 2; k++) {
+      const x = ((t * 15 + k * 150) % 330) - 60, f = Math.floor(t * 3 + k) % 2;
+      X2(x, 110, () => { drawElephant(0, 0, f); for (const lx of [3, 6, 9, 12]) px(P.yellow, lx, 13); });
+      P2(x + 34, 150, f, { robe: P.saffron, trim: P.white, hat: 'turban', hatc: P.white, skin: 3 });
+    }
+  },
+  bear(t) {
+    P2(146, 156, 0, { robe: P.lavD, trim: P.yellow, hat: 'fur', skin: 2 });
+    const hit = Math.floor(t * 3) % 2; disc(168, 144, 5, P.coral); R(P.butter, 163, 139 + hit, 11, 2);
+    const bob = reduceMotion ? 0 : Math.round(Math.abs(Math.sin(t * 3)) * 3), bow = (t % 5) > 4, flip = Math.floor(t * 1.2) % 2 ? -1 : 1;
+    const B = '#8A5A3E', BL = '#B07A52';
+    g.save(); g.translate(188, 104 - bob + (bow ? 4 : 0)); g.scale(2 * flip, 2);
+    const o = flip < 0 ? -12 : 0;
+    R(B, o + 2, 6, 8, 12); R(BL, o + 4, 9, 4, 6); disc(o + 6, 4, 4, B); R(B, o + 2, -1, 2, 2); R(B, o + 8, -1, 2, 2);
+    R(BL, o + 4, 4, 4, 3); px(P.navy, o + 5, 2); px(P.navy, o + 7, 2); px(P.navy, o + 6, 4);
+    R(B, o, bow ? 10 : 7 - bob, 2, 5); R(B, o + 10, bow ? 10 : 4 + bob, 2, 5); R(B, o + 3, 18, 2, 3); R(B, o + 7, 18, 2, 3);
+    if ((t % 7) > 5) { R(P.coral, o + 10, 3, 5, 2); R(P.coral, o + 11, 1, 3, 2); }
+    g.restore();
+  },
+  naqqal(t) {
+    R(P.woodD, 62, 96, 2, 58); R(P.woodD, 162, 96, 2, 58); R(P.woodD, 60, 96, 106, 2);
+    R(P.paper, 64, 98, 98, 46); R(P.coral, 64, 98, 98, 2); R(P.coral, 64, 142, 98, 2);
+    R('#FFE7BD', 66, 101, 30, 40); R('#DDF1FF', 98, 101, 30, 40); R('#FFD6E8', 130, 101, 30, 40);
+    drawRider(74, 122, Math.floor(t * 2) % 2);
+    R(P.white, 106, 112, 14, 20); R(P.white, 108, 108, 10, 5); px(P.navy, 110, 110); px(P.navy, 115, 110); R(P.coral, 111, 113, 4, 1); px(P.yellow, 107, 106); px(P.yellow, 118, 106); R('#E6E0FA', 106, 130, 4, 4); R('#E6E0FA', 116, 130, 4, 4);
+    const fl = Math.floor(t * 3) % 2;
+    R(P.pink, 134, 114 - fl, 8, 3); R(P.turq, 142, 113, 6, 4); R(P.yellow, 148, 114 - fl, 7, 3); px(P.navy, 145, 114); px(P.saffron, 148, 115);
+    R(P.woodD, 136, 134, 20, 3); R(SKIN[0], 143, 129, 5, 5); R(P.white, 143, 128, 5, 2);
+    const tx = [82, 112, 146][Math.floor(t / 2.4) % 3];
+    scene.nx = scene.nx == null ? 170 : scene.nx + (tx + 18 - scene.nx) * 0.06;
+    P2(scene.nx, 162, Math.abs(tx + 18 - scene.nx) > 2 ? Math.floor(t * 6) % 2 : 0, STORYTELLER);
+    for (let j = 0; j <= 10; j++) px(P.woodD, scene.nx + 2 + (tx - scene.nx - 2) * j / 10, 144 + (126 - 144) * j / 10);
+  },
+  puppets(t) {
+    R(DARK, 94, 106, 52, 22); R(P.yellow, 86, 98, 68, 3); R(P.coral, 86, 101, 68, 5); R(P.coral, 86, 101, 8, 30); R(P.coral, 146, 101, 8, 30);
+    for (let x = 94; x < 146; x += 6) R(P.pink, x, 106, 3, 2);
+    const a = Math.max(0, Math.sin(t * 2.2)), b = Math.max(0, Math.sin(t * 2.2 + Math.PI));
+    X2(102, 108 + Math.round((1 - a) * 10), () => drawPerson(0, 0, 0, { robe: P.turq, trim: P.yellow, hat: 'turban', hatc: P.white, skin: 1, beard: '#F6F1EA' }));
+    X2(122, 110 + Math.round((1 - b) * 10), () => { const Dn = '#B8B0C8'; R(Dn, 0, 3, 7, 5); R(Dn, 5, 1, 4, 4); R(Dn, 5, -2, 1, 3); R(Dn, 7, -2, 1, 3); px(P.navy, 7, 2); R('#E6E0FA', 7, 4, 2, 2); });
+    R(P.coral, 86, 128, 68, 26); for (let x = 86; x < 154; x += 8) R(P.white, x, 128, 4, 26); R(P.yellow, 86, 128, 68, 2);
+  },
+  whirl(t) {
+    const pts = [0, 1, 2, 3, 4].map(k => { const a = k / 5 * Math.PI * 2 + t * 0.7; return [120 + Math.cos(a) * 54, 140 + Math.sin(a) * 10, k]; }).sort((p, q) => p[1] - q[1]);
+    for (const [x, y, k] of pts) {
+      const w = 9 + Math.round(Math.abs(Math.sin(t * 7 + k)) * 4), sk = SKIN[k % 4];
+      X2(x - 7, y - 24, () => { R(P.white, 3.5 - w / 2, 8, w, 4); drawPerson(0, 0, 0, { robe: P.white, trim: P.turqH, hat: 'dervish', skin: k % 4 }, { arms: false }); R(sk, -3, 5, 3, 1); R(sk, 7, 4, 3, 1); });
+    }
+    P2(206, 156, 0, { robe: P.lavD, trim: P.white, hat: 'turban', hatc: P.white, skin: 1, beard: '#F6F1EA' });
+  },
+  wrestle(t) {
+    for (let a = 0; a < 6.28; a += 0.1) px('#D9A86E', 120 + Math.cos(a) * 50, 142 + Math.sin(a) * 12);
+    const ph = t % 5, thr = ph > 4.2, sw = Math.round(Math.sin(t * 2.4) * 4), lift = thr ? Math.round(Math.sin((ph - 4.2) / 0.8 * Math.PI) * 14) : 0;
+    P2(104 + sw, 148, Math.floor(t * 3) % 2, { robe: P.blue, trim: P.white, hat: 'doppa', hatc: P.navy, skin: 2 });
+    P2(120 + sw, 148 - lift, thr ? 1 : Math.floor(t * 3 + 1) % 2, { robe: P.coral, trim: P.yellow, hat: 'doppa', hatc: P.pink, skin: 3 });
+    X2(180, 128, () => { disc(5, 4, 4, P.white); disc(9, 3, 3, P.white); R('#3B2A4A', 11, 2, 3, 3); px(P.white, 12, 3); R('#3B2A4A', 3, 8, 1, 2); R('#3B2A4A', 8, 8, 1, 2); });
+  },
+  tiles(t) {
+    R(P.woodD, 74, 96, 92, 50); R(P.paper, 76, 98, 88, 46);
+    const n = Math.floor(t * 5) % 70;
+    for (let i = 0; i < 44; i++) {
+      const cx = 78 + (i % 11) * 8, cy = 100 + Math.floor(i / 11) * 11;
+      if (i > n) { R('#EADBC4', cx, cy, 7, 9); continue; }
+      const c = [TQ, LAP, P.white, GOLD][(i + Math.floor(i / 11)) % 4], d = c === P.white ? TQ : P.white;
+      R(c, cx, cy, 7, 9); px(d, cx + 3, cy + 4); px(d, cx + 3, cy + 2); px(d, cx + 1, cy + 4); px(d, cx + 5, cy + 4); px(d, cx + 3, cy + 6);
+    }
+    P2(176, 158, 0, { robe: P.saffron, trim: P.white, hat: 'turban', hatc: P.butter, skin: 1 });
+    R(P.stoneD, 170, 146 - (Math.floor(t * 4) % 2) * 2, 4, 2); twinkle(90, 100, t, 1, true); twinkle(150, 130, t, 3);
+  },
+};
+function drawShow() {
+  const t = scene.t;
+  stageBg(t); crowdRow(t, 88);
+  const f = SHOWDRAW[scene.kind]; if (f) f(t);
+  crewRow(180); drawEmotes();
+}
+
+/* ---------- v4 scenes: stories by the campfire ---------- */
+function drawFire() {
+  const t = scene.t;
+  sky(['#1B1A4A', '#24245E', '#2E2C6E', '#3B357E', '#4A3F8A'], 116);
+  for (let i = 0; i < 46; i++) { const x = hash(i * 7) * W | 0, y = hash(i * 13) * 100 | 0; px(Math.sin(t * 2 + i) > 0.7 ? P.white : '#BFC4FF', x, y); }
+  twinkle(30, 20, t, 1, true); twinkle(150, 12, t, 2.4); twinkle(80, 40, t, 4.1);
+  disc(196, 22, 8, '#FFF3C4'); disc(199, 20, 7, '#24245E');
+  for (let x = 0; x < W; x++) { const h = Math.round(ridge(x, 114, 14, 0.7)); R('#2A2560', x, h, 1, 122 - h); }
+  R('#3A2F5E', 0, 120, W, 60);
+  const fx = 120, fy = 150, fl = reduceMotion ? 0 : Math.sin(t * 9) * 0.04 + Math.sin(t * 13) * 0.03;
+  g.save(); g.globalAlpha = 0.16 + fl; disc(fx, fy, 74, '#FFB13B'); g.globalAlpha = 0.22 + fl; disc(fx, fy, 44, '#FFC86A'); g.restore();
+  [[16, 128], [198, 126]].forEach(([x, y]) => { R('#4A3F72', x, y, 22, 6); R('#4A3F72', x + 4, y - 3, 8, 3); R('#4A3F72', x + 20, y - 6, 3, 8); R('#4A3F72', x + 22, y - 7, 4, 3); });
+  const arm = reduceMotion ? 0 : Math.round(Math.sin(t * 3) * 2);
+  X2(113, 104, () => { drawPerson(0, 0, 0, STORYTELLER, { arms: false }); px(SKIN[1], -1, 6 + arm); px(SKIN[1], 7, 6 - arm); px(SKIN[1], -2, 5 + arm); px(SKIN[1], 8, 5 - arm); });
+  R(P.woodD, fx - 10, fy + 4, 20, 3); R(P.wood, fx - 8, fy + 2, 16, 2);
+  for (let i = 0; i < 9; i++) { const h = 6 + Math.abs(Math.sin(t * 7 + i * 1.7)) * 10, x = fx - 9 + i * 2; R(i % 3 ? '#FF6B4A' : '#FFB13B', x, fy + 3 - h, 3, h); R('#FFE14A', x + 1, fy + 3 - h * 0.6, 1, h * 0.6); }
+  for (let i = 0; i < 10; i++) { const age = (t * 0.8 + hash(i) * 3) % 3; px(age < 1.5 ? '#FFE14A' : '#FF9FCB', fx + Math.sin(i * 3 + t * 2) * (4 + age * 6), fy - 8 - age * 28); }
+  const seats = [[60, 174], [84, 179], [156, 179], [180, 174], [38, 168], [202, 168]]; let k = 0;
+  if (S) { alive().forEach(m => { const i = S.party.indexOf(m), [x, y] = seats[k++ % 6]; ANCH['p' + i] = P2(x - 7, y, 0, LOOKS[i % 5]); }); if (S.guest) { const [x, y] = seats[k++ % 6]; ANCH.guest = P2(x - 7, y, 0, GLOOK); } }
+  ANCH.goat = G2(100, 179, 0, Math.floor(t * 2) % 2 === 0, 0);
+  drawEmotes();
+}
+
+/* ---------- v4 scenes: reunions in Samarkand ---------- */
+function heartPx(x, y, c) { R(c, x, y, 2, 1); R(c, x + 3, y, 2, 1); R(c, x - 1, y + 1, 7, 2); R(c, x, y + 3, 5, 1); R(c, x + 1, y + 4, 3, 1); px(c, x + 2, y + 5); }
+function drawReunion() {
+  const t = scene.t;
+  sky(['#FF9FC6', '#FFB3C9', '#FFC6C2', '#FFD7B8', '#FFE7A8', '#FFF3B8'], 120);
+  g.save(); g.globalAlpha = 0.9; g.drawImage(sprite('samarkand'), 0, 0, 120, 64, 0, -10, 240, 128); g.restore();
+  R('#F4C595', 0, 118, W, 62); R('#E8B07E', 0, 150, W, 30); dither('#F4C595', 150);
+  for (let y = 124; y < H; y += 10) for (let x = 0; x < W; x += 16) R('#EFBC8A', x + ((y / 10) % 2 ? 8 : 0), y, 8, 1);
+  const k = Math.min(1, t / 2.2), e = 1 - Math.pow(1 - k, 2), met = k >= 1;
+  const ax = 20 + e * 86, bx = 206 - e * 86, jump = met && !reduceMotion ? Math.max(0, Math.round(Math.sin(t * 7) * 3)) : 0, fr = met ? 0 : Math.floor(t * 8) % 2;
+  P2(ax, 168 - jump, fr, scene.a || LOOKS[2]);
+  P2(bx, 168 - (met ? Math.max(0, Math.round(Math.sin(t * 7 + 1) * 3)) : 0), fr, scene.b || GLOOK);
+  if (met) {
+    for (let i = 0; i < 6; i++) { const age = (t - 2.2 + i * 0.5) % 3; X2(116 + Math.sin(i * 2 + t) * 16, 134 - age * 24, () => heartPx(0, 0, i % 2 ? P.pink : P.coral)); }
+    if (scene.prop === 'ring') { twinkle(120, 150, t, 1, true); R(TQ, 119, 151, 3, 2); }
+    if (scene.prop === 'bird') { R(P.wood, 128, 146, 6, 3); R(P.wood, 133, 144, 3, 3); px(P.navy, 134, 145); px(P.saffron, 136, 146); R(P.woodD, 126, 145, 2, 2); }
+    if (scene.prop === 'drum') { const hit = Math.floor(t * 5) % 2; disc(100, 158, 5, P.coral); R(P.butter, 95, 153 + hit, 11, 2); if (hit) twinkle(100, 146, t, 2); }
+  }
+  ANCH.goat = G2(6, 178, 0, Math.floor(t * 2) % 2 === 0, reduceMotion ? 0 : goatHop(t));
+  drawEmotes();
+}
+
+/* ---------- v4 minigame: buzkashi ---------- */
+let bz = null;
+function buzkGame({ onDone }) {
+  travelling = false; loseDays(1);
+  const foes = [0, 1, 2, 3].map(k => ({ x: 70 + k * 36, y: 112 + (k % 2) * 34, vx: 0, vy: 0, dir: -1, robe: ['#3B5BD6', '#FF6B4A', '#4CBF6B', '#8F7FE0'][k], hatc: k % 2 ? '#C98A5E' : P.white }));
+  bz = { t: 0, dur: 30, me: { x: 30, y: 140, vx: 0, vy: 0, dir: 1 }, target: null, drag: false, foes, c: { x: 124, y: 134, by: null }, goal: { x: 214, y: 154 }, theirs: { x: 26, y: 112 }, mine: 0, them: 0, knocks: 0, flash: '', cool: 0, onDone, over: false };
+  setScene('buzk', { region: curRegion() });
+  screen(`<h2>Buzkashi!</h2><p class="big">Grab the goat carcass and carry it into the pink circle. Everyone else wants it too.</p><p class="dim">Touch and drag to ride, or use the arrow keys. Ride over the carcass to grab it. Riders who bump you can knock it loose, and you can steal it right back.</p>`, [{ label: 'Give up', onClick: () => buzkEnd() }]);
+  buzkHud();
+}
+function buzkHud() { if (!bz) return; setHud(`<span>You <b>${bz.mine}</b></span><span>Them <b>${bz.them}</b></span><span>0:${String(Math.max(0, Math.ceil(bz.dur - bz.t))).padStart(2, '0')}</span>${bz.flash ? `<span class="good">${bz.flash}</span>` : ''}`); }
+function buzkReset() { const b = bz; b.c = { x: 124, y: 134, by: null }; b.cool = 1; b.foes.forEach((f, k) => { f.x = clamp(f.x + rnd(-40, 40), 30, 210); f.y = 104 + k * 16; f.vx = f.vy = 0; }); b.hold = 1; }
+function buzkUpdate(dt) {
+  const b = bz; if (!b || b.over) return;
+  b.t += dt; b.cool = Math.max(0, b.cool - dt); b.hold = Math.max(0, (b.hold || 0) - dt);
+  const me = b.me, c = b.c, near = (a, p, r) => Math.hypot(a.x - p.x, a.y - p.y) < r;
+  let ax = (keys.right ? 1 : 0) - (keys.left ? 1 : 0), ay = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
+  if (!ax && !ay && b.target) { const dx = b.target.x - me.x, dy = b.target.y - 8 - me.y, L = Math.hypot(dx, dy); if (L > 4) { ax = dx / L; ay = dy / L; } }
+  const L = Math.hypot(ax, ay), sp = c.by === 'me' ? 66 : 80;
+  if (L) { me.vx += (ax / L * sp - me.vx) * Math.min(1, dt * 5); me.vy += (ay / L * sp - me.vy) * Math.min(1, dt * 5); } else { me.vx *= 0.9; me.vy *= 0.9; }
+  me.x = clamp(me.x + me.vx * dt, 14, 226); me.y = clamp(me.y + me.vy * dt, 102, 166); if (Math.abs(me.vx) > 3) me.dir = me.vx > 0 ? 1 : -1;
+  b.foes.forEach((f, k) => {
+    let tx, ty;
+    if (c.by === k) { tx = b.theirs.x; ty = b.theirs.y; }
+    else if (c.by === 'me') { tx = me.x + Math.cos(k * 1.6) * 8; ty = me.y + Math.sin(k * 1.6) * 8; }
+    else if (c.by != null) { const h = b.foes[c.by]; tx = h.x + Math.cos(k * 2) * 20; ty = h.y + Math.sin(k * 2) * 20; }
+    else { tx = c.x + Math.cos(k * 1.6 + b.t) * 8; ty = c.y + Math.sin(k * 1.6 + b.t) * 8; }
+    const dx = tx - f.x, dy = ty - f.y, D = Math.hypot(dx, dy) || 1, fs = (c.by === k ? 42 : 50) * (0.84 + k * 0.06) * (b.t < 1.5 || b.hold > 0 ? 0.3 : 1);
+    f.vx += (dx / D * fs - f.vx) * Math.min(1, dt * 3); f.vy += (dy / D * fs - f.vy) * Math.min(1, dt * 3);
+    for (const o of b.foes) if (o !== f) { const ox = f.x - o.x, oy = f.y - o.y, d2 = Math.hypot(ox, oy); if (d2 < 14 && d2 > 0) { f.vx += ox / d2 * 30 * dt * 10; f.vy += oy / d2 * 30 * dt * 10; } }
+    f.x = clamp(f.x + f.vx * dt, 14, 226); f.y = clamp(f.y + f.vy * dt, 102, 166); if (Math.abs(f.vx) > 3) f.dir = f.vx > 0 ? 1 : -1;
+  });
+  if (c.by == null) {
+    if (near(me, c, 14)) { c.by = 'me'; b.flash = 'Got it!'; sfx.pop(); }
+    else { const k = b.foes.findIndex(f => near(f, c, 12)); if (k >= 0) { c.by = k; b.flash = 'They have it!'; } }
+  } else if (c.by === 'me') {
+    if (b.cool <= 0) { const f = b.foes.find(f => near(f, me, 12)); if (f) { b.cool = 1.1; if (chance(0.45)) { c.by = null; c.x = clamp(me.x + rnd(-26, 26), 20, 220); c.y = clamp(me.y + rnd(-18, 18), 106, 162); b.knocks++; b.flash = 'Knocked loose!'; sfx.bad(); } else b.flash = 'Dodged!'; } }
+    if (c.by === 'me' && near(me, b.goal, 18)) { b.mine++; b.flash = 'Halal! A goal!'; sfx.fanfare(); buzkReset(); }
+  } else {
+    const f = b.foes[c.by];
+    if (b.cool <= 0 && near(me, f, 14)) { b.cool = 0.8; if (chance(0.5)) { c.by = 'me'; b.flash = 'Stolen!'; sfx.pop(); } else b.flash = 'Missed!'; }
+    if (c.by !== 'me' && near(f, b.theirs, 16)) { b.them++; b.flash = 'They score.'; sfx.bad(); buzkReset(); }
+  }
+  if (c.by === 'me') { c.x = me.x + me.dir * 10; c.y = me.y + 6; } else if (c.by != null) { const f = b.foes[c.by]; c.x = f.x + f.dir * 10; c.y = f.y + 6; }
+  if (Math.floor(b.t * 4) !== Math.floor((b.t - dt) * 4)) buzkHud();
+  if (b.t >= b.dur) buzkEnd();
+}
+function buzkDraw() {
+  const b = bz, t = scene.t;
+  drawBackground(scene.region || 'khorasan', null, 0, 82);
+  for (let i = 0; i < 20; i++) { const L = { robe: ROBES[i % 8], trim: TRIMS[i % 5], hat: ['kalpak', 'fur', 'turban', 'doppa', 'scarf'][i % 5], hatc: [P.white, P.white, P.white, P.navy, P.pink][i % 5], skin: Math.floor(hash(i * 17 + 3) * 4) }; drawPerson(2 + i * 12, 84 - (reduceMotion ? 0 : Math.max(0, Math.round(Math.sin(t * 6 + i) * 2))), 0, L); }
+  if (!b) return;
+  const ring = (x, y, r, col) => { for (let a = 0; a < 6.283; a += 0.14) R(col, x + Math.cos(a) * r, y + Math.sin(a) * r * 0.5, 2, 2); };
+  ring(b.goal.x, b.goal.y, 18, P.pink); ring(b.theirs.x, b.theirs.y, 16, P.navy);
+  const ents = [{ y: b.me.y, me: true }, ...b.foes.map((f, k) => ({ y: f.y, f, k }))];
+  if (b.c.by == null) ents.push({ y: b.c.y, carc: true });
+  ents.sort((p, q) => p.y - q.y);
+  for (const e of ents) {
+    if (e.carc) { R('#9A6142', b.c.x - 5, b.c.y, 10, 4); R('#7A4A32', b.c.x - 4, b.c.y + 4, 1, 2); R('#7A4A32', b.c.x + 3, b.c.y + 4, 1, 2); R('#9A6142', b.c.x + 4, b.c.y - 2, 3, 3); continue; }
+    const r = e.me ? b.me : e.f, moving = Math.hypot(r.vx, r.vy) > 8, fr = moving ? Math.floor(t * 9 + (e.k || 0)) % 2 : 0;
+    if (moving) for (let j = 0; j < 3; j++) px('#E9D3AE', r.x - r.dir * (14 + j * 4), r.y + 10 + (hash(j + Math.floor(t * 10)) * 4 | 0));
+    riderC(r.x - 13, r.y - 8, fr, r.dir, e.me ? LOOKS[0].robe : r.robe, e.me ? P.white : r.hatc);
+    if ((e.me && b.c.by === 'me') || (!e.me && b.c.by === e.k)) R('#9A6142', b.c.x - 4, b.c.y - 2, 8, 4);
+    if (e.me) { const yy = r.y - 30 + Math.round(Math.sin(t * 5) * 1.5); R(P.yellow, r.x - 2, yy, 5, 2); R(P.yellow, r.x - 1, yy + 2, 3, 1); px(P.yellow, r.x, yy + 3); }
+  }
+}
+function buzkEnd() {
+  const b = bz; if (!b || b.over) return; b.over = true; bz = null; setHud(null);
+  let text = b.mine ? `You score ${plural(b.mine, 'goal')}${b.them ? `, and they score ${b.them}` : ''}.` : `You never score.${b.them ? ` They score ${b.them}.` : ''}`;
+  if (b.mine) { const cash = b.mine * 15, meat = b.mine * 15; S.money += cash; S.food += meat; text += ` The crowd roars. The host gives you ${money(cash)} and ${meat} pounds of mutton.`; }
+  else text += ' The host gives you a consolation onion.';
+  if (b.mine >= 3 && b.mine > b.them) { addCamels(1); const c = S.herd[S.herd.length - 1]; text += ` And a camel! Her name is ${c.name}. ${c.bio}`; }
+  const m = leader(); let hurt = null;
+  if (!m.inj && chance(0.1 + b.knocks * 0.05)) { m.inj = 'arm'; m.injDays = ri(6, 10); m.hp = Math.max(1, m.hp - 10); hurt = msg('Also, at some point, you broke your arm.', { sound: 'bad', who: 'p0', emo: 'sweat' }); }
+  save();
+  setScene(S.atNode ? 'node' : 'walk', S.atNode ? { node: S.segFrom } : {});
+  b.onDone([msg(text, { title: 'Buzkashi', sound: b.mine ? 'good' : 'bad' }), hurt]);
+}
+
 /* ---------- boot ---------- */
-window.__trail = { state: () => S, setDay: ms => { DAY_MS = ms; }, scene: () => scene, hunt: () => hunt, raft: () => raft, huntEnd, raftEnd, jump: id => { travelling = false; arriveAt(id); }, raftTest: night => raftGame({ night, onDone: items => crossDone(items) }), emote, cue: n => { forcedCue = n; }, snd: SND, amb: t => ambSpawnType(t), haggle: () => haggleGame(S.segFrom, m => storeScreen(S.segFrom, menuScreen, m)) };
+window.__trail = { buzk: () => buzkGame({ onDone: items => runQueue(items, menuScreen) }), show: (k, id) => { setScene('show', { kind: k, node: id || S.segFrom }); }, fire: () => setScene('fire'), reunion: () => setScene('reunion', { a: LOOKS[2], b: GLOOK, prop: 'ring' }), state: () => S, setDay: ms => { DAY_MS = ms; }, scene: () => scene, hunt: () => hunt, raft: () => raft, huntEnd, raftEnd, jump: id => { travelling = false; arriveAt(id); }, raftTest: night => raftGame({ night, onDone: items => crossDone(items) }), emote, cue: n => { forcedCue = n; }, snd: SND, amb: t => ambSpawnType(t), haggle: () => haggleGame(S.segFrom, m => storeScreen(S.segFrom, menuScreen, m)) };
 function ambSpawnType(type) { AMB.list = []; for (let i = 0; i < 40 && !AMB.list.some(c => c.type === type); i++) { AMB.list = []; ambSpawn(curRegion(), true); } }
 function start(data) {
   if (data && data.S && data.S.v === 3) S = data.S;
