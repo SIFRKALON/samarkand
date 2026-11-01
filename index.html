@@ -107,6 +107,9 @@ input.txt::placeholder{color:#A9A4CC}
 .tabs button[aria-selected="true"]{background:var(--blue);color:#fff}
 .panel{background:var(--card);border:2.5px solid var(--navy);border-radius:14px;padding:11px 14px;margin:0 0 .8em;box-shadow:3px 3px 0 var(--blue2)}
 .panel p:last-child{margin-bottom:0!important}
+.bark{position:absolute;transform:translate(-50%,-100%);background:#fff;border:2px solid var(--navy);border-radius:12px;padding:2px 9px 3px;font:700 15px/1.15 Gaegu,'Comic Sans MS',cursive;color:var(--navy);max-width:62%;text-align:center;pointer-events:none;box-shadow:2px 2px 0 var(--pink);z-index:2}.bark::after{content:'';position:absolute;left:50%;bottom:-7px;margin-left:-5px;border:5px solid transparent;border-top-color:var(--navy)}
+.why{font-size:.82em;color:#6b6a99}
+.strip.qs{display:flex;gap:6px;justify-content:space-between;margin:.6em 0}.strip.qs .pm{display:flex;flex-direction:column;align-items:center;flex:1;text-align:center;font-size:14px;line-height:1.1}.strip.qs small{font-size:11px;color:#6b6a99}
 .verse{margin:.75em 0 0;padding:.45em .8em .5em;border-left:4px solid #FF4FA3;background:#FFF0F7;border-radius:4px 12px 12px 4px}.verse p{margin:0 0 .3em!important;font-size:19px;line-height:1.25;color:#26275F}.verse span.at{font-family:var(--pix);font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--blue)}
 .store{display:flex;flex-direction:column;gap:9px;margin:.3em 0 .7em}
 .item{display:grid;grid-template-columns:1fr auto;gap:2px 10px;align-items:center;padding:8px 11px;background:var(--card);border:2.5px solid var(--navy);border-radius:14px}
@@ -771,7 +774,7 @@ function typeEl(el, voice, onDone) {
     if (/[a-z0-9]/i.test(c) && /[\s"'(—-]/.test(prev)) { let w = ''; for (let k = i; k < Math.min(chars.length, i + 14); k++) { const ch = chars[k].textContent; if (/\s/.test(ch)) break; w += ch; } SND.blip(voice, c.charCodeAt(0) + w.length * 3, w.includes('?'), w.replace(/[^a-z]/gi, '').length); }
     i++;
     const nx = i < chars.length ? chars[i].textContent : ' ';
-    t.id = setTimeout(step, /[.!?]/.test(c) && /\s/.test(nx) ? 300 : /[,;:]/.test(c) ? 120 : c === '—' ? 160 : 22);
+    t.id = setTimeout(step, /[.!?]/.test(c) && /\s/.test(nx) ? 220 : /[,;:]/.test(c) ? 90 : c === '—' ? 120 : 16);
   };
   typer = t; t.id = setTimeout(step, 80);
 }
@@ -842,7 +845,11 @@ function runQueue(items, done) {
   const step = () => {
     if (!q.length) return done();
     const it = q.shift();
-    if (it.type === 'msg') return messageScreen(it, step);
+    if (it.type === 'msg') {
+      let cur = it, n = 0;
+      while (n < 2 && q[0] && q[0].type === 'msg' && !q[0].title && !q[0].scene && !q[0].after && !cur.after) { const nx = q.shift(); cur = { ...cur, text: cur.text + '<br><br>' + nx.text, sound: cur.sound || nx.sound }; n++; }
+      return messageScreen(cur, step);
+    }
     if (it.type === 'death') return deathScreen(it.m, it.cause, step);
     if (it.type === 'choice') return choiceScreen(it, step);
     if (it.type === 'hunt') return huntGame({ bonus: it.bonus, onDone: step });
@@ -975,6 +982,7 @@ function updateHealth(rest, starving, thirsty, region) {
     if (starving) d -= 5;
     if (thirsty) d -= 10;
     m.hp = clamp(m.hp + d, 0, 100);
+    if (m.hp < 25 && !m.warned && m.hp > 0) { m.warned = true; deaths.push({ warn: m }); } else if (m.hp > 45) m.warned = false;
     let dead = m.hp <= 0;
     if (!dead && (m.sick || m.inj) && m.hp < 22 && chance(m.sick === 'plague' ? 0.25 : 0.16)) dead = true;
     if (dead && S.flags.blessed) { S.flags.blessed = false; m.hp = 12; m.sick = null; m.inj = null; deaths.push({ saved: m }); continue; }
@@ -1010,6 +1018,7 @@ function advanceDay(rest) {
   const plaguey = alive().find(m => m.sick === 'plague');
   if (plaguey && S.flags.isolate !== plaguey.name && chance(0.06)) { const v = alive().find(m => !m.sick && m !== plaguey); if (v) { v.sick = 'plague'; v.hp = Math.max(1, v.hp - 8); items.push(msg(`${who(v)} ${second(v, 'has the plague')} too.`, { sound: 'bad' })); } }
   const realDeaths = deaths.filter(d => d.m), saved = deaths.filter(d => d.saved);
+  deaths.filter(d => d.warn && d.warn.alive).forEach(d => items.push(msg(`${d.warn.leader ? 'You can' : esc(d.warn.name) + ' can'} barely stand. Rest soon, or the goat will be choosing ${d.warn.leader ? 'your' : 'an'} epitaph.`, { title: 'Worn out', sound: 'bad', who: 'p' + S.party.indexOf(d.warn), emo: 'sweat' })));
   saved.forEach(d => items.push(msg(`${who(d.saved)} ${d.saved.leader ? 'were' : 'was'} very nearly lost. Somewhere, a dervish’s prayer is answered. ${who(d.saved)} ${d.saved.leader ? 'open your' : 'opens their'} eyes and asks for soup.`, { title: 'A blessing', sound: 'sparkle' })));
   if (!realDeaths.length && leader().alive) {
     const ev = rollEvent({ region, dry, rest, month: monthOf(S.day), temp: S.weather.temp, precip: S.weather.precip, thirsty });
@@ -1055,16 +1064,16 @@ function sickEvent(m, kind) {
   }
   if (kind === 'fever') {
     opts.push({ label: 'Feed them cooling foods: yogurt, melon, cucumber', sub: 'uses 20 lb of food', disabled: S.food < 20, run: () => { S.food -= 20; m.care = 0.2; return msg('Heat in the blood calls for cold foods. They eat yogurt and melon and say they feel cooler. They might be right.'); } });
-    opts.push({ label: 'Bleed them, like the barbers do', sub: 'risky', run: () => chance(remedyOdds(0.45)) ? cureMsg(m, 'You let a little blood from {n}’s arm. By morning the fever has broken. Anahit says it was luck.') : (m.hp = Math.max(1, m.hp - 15), msg(`You let a little blood. ${n} ${m.leader ? 'feel' : 'feels'} much worse. Anahit says she could have told you that.`, { sound: 'bad' })) });
+    opts.push({ label: 'Bleed them, like the barbers do', sub: has('anahit') ? 'Anahit: works half the time, if that' : 'risky: a coin toss', run: () => chance(remedyOdds(0.45)) ? cureMsg(m, 'You let a little blood from {n}’s arm. By morning the fever has broken. Anahit says it was luck.') : (m.hp = Math.max(1, m.hp - 15), msg(`You let a little blood. ${n} ${m.leader ? 'feel' : 'feels'} much worse. Anahit says she could have told you that.`, { sound: 'bad' })) });
   }
   if (kind === 'eye') {
     if (S.items.rue) opts.push({ label: 'Burn wild rue', sub: 'isfand smoke drives off the eye', run: () => { S.items.rue--; return cureMsg(m, 'You drop wild rue seeds on the coals. They pop and crackle, and fragrant smoke curls around {n}. Everyone feels better. Even the goat.'); } });
     if (S.items.bead) opts.push({ label: 'Hang a blue bead on them', run: () => cureMsg(m, 'You hang the blue bead around {n}’s neck. The evil eye looks elsewhere.') });
-    opts.push({ label: 'Say a prayer and spit three times', run: () => chance(0.4) ? cureMsg(m, 'You pray and spit three times, carefully, over your left shoulder. It works. Yaqub says it was a coincidence and spits anyway.') : msg('You pray and spit three times. Nothing happens, except that the goat is now offended.') });
+    opts.push({ label: 'Say a prayer and spit three times', sub: 'works now and then', run: () => chance(0.4) ? cureMsg(m, 'You pray and spit three times, carefully, over your left shoulder. It works. Yaqub says it was a coincidence and spits anyway.') : msg('You pray and spit three times. Nothing happens, except that the goat is now offended.') });
   }
   if (kind === 'jinn') {
-    opts.push({ label: 'Put iron under their pillow', sub: 'jinn hate iron', run: () => chance(remedyOdds(0.4)) ? cureMsg(m, 'You slide a knife under {n}’s pillow. In the night they sit up, say thank you to nobody, and sleep like a stone. The jinn is gone.') : msg('You slide a knife under their pillow. The jinn does not seem to mind iron. It may be a very modern jinn.') });
-    if (has('otabek') && m.name !== 'Otabek') opts.push({ label: 'Otabek plays music to coax it out', run: () => chance(0.6) ? cureMsg(m, 'Otabek plays his dutar all evening, softer and softer. At midnight {n} laughs, yawns and says the visitor has left.') : msg('Otabek plays for hours. The jinn requests another song.') });
+    opts.push({ label: 'Put iron under their pillow', sub: 'jinn hate iron · works about half the time', run: () => chance(remedyOdds(0.4)) ? cureMsg(m, 'You slide a knife under {n}’s pillow. In the night they sit up, say thank you to nobody, and sleep like a stone. The jinn is gone.') : msg('You slide a knife under their pillow. The jinn does not seem to mind iron. It may be a very modern jinn.') });
+    if (has('otabek') && m.name !== 'Otabek') opts.push({ label: 'Otabek plays music to coax it out', sub: 'usually works', run: () => chance(0.6) ? cureMsg(m, 'Otabek plays his dutar all evening, softer and softer. At midnight {n} laughs, yawns and says the visitor has left.') : msg('Otabek plays for hours. The jinn requests another song.') });
     opts.push({ label: 'Take them to a shrine', sub: 'cured at the next town', run: () => { m.care = 0.08; S.flags.shrineCure = m.name; return msg(`You will find a shrine at the next town. ${n} ${m.leader ? 'agree' : 'agrees'}, in between conversations with no one.`); } });
   }
   if (kind === 'plague') {
@@ -1079,7 +1088,7 @@ function sickEvent(m, kind) {
   if (kind === 'worm') opts.push({ label: 'Wind it out on a stick, slowly', sub: 'lose 2 days', run: () => { loseDays(2); return cureMsg(m, 'You wind the worm onto a little stick, a few turns a day, slowly, slowly. Patience. Then it is out, all of it. {n} faints a little.'); } });
   if (kind === 'bile') {
     if (has('otabek') && m.name !== 'Otabek') opts.push({ label: 'Otabek plays the dutar for them', run: () => cureMsg(m, 'Otabek plays the saddest song he knows, then a silly one, then a sad one again. Somewhere in the middle {n} starts laughing and cannot stop. The black bile has drained away, says Anahit.') });
-    opts.push({ label: 'Tell stories around the fire', sub: 'lose a day', run: () => { loseDays(1); return chance(0.7) ? cureMsg(m, 'You sit up late telling stories. Yaqub tells one about a camel who became a vizier. {n} feels much better.') : msg('You tell stories all night. Everyone else feels better.'); } });
+    opts.push({ label: 'Tell stories around the fire', sub: 'lose a day · usually works', run: () => { loseDays(1); return chance(0.7) ? cureMsg(m, 'You sit up late telling stories. Yaqub tells one about a camel who became a vizier. {n} feels much better.') : msg('You tell stories all night. Everyone else feels better.'); } });
   }
   if (kind === 'exhaustion') opts.push({ label: 'Slow the pace to steady', run: () => { S.pace = 1; m.care = 0.1; return msg('You slow down. Everyone breathes out at once.'); } });
   if (!S.army) opts.push({ label: 'Rest for two days', run: () => { m.care = Math.max(m.care, 0.1); return [msg('You make camp and rest for two days.'), ...restDays(2)]; } });
@@ -1982,6 +1991,7 @@ function loop(ts) {
     else if (scene.mode === 'buzk') { buzkUpdate(dt); buzkDraw(); }
   } catch (err) { console.error(err); }
   try { const c = forcedCue || musicCue(); lastCue = c; SND.tick(c); } catch (e) {}
+  barkTick(dt);
   syncToggles();
   requestAnimationFrame(loop);
 }
@@ -2003,7 +2013,7 @@ function titleScreen() {
   travelling = false; setScene('title');
   const saved = store.get(KEY.save, null);
   const hasSave = saved && saved.v === 3 && saved.party && saved.party.length && saved.party[0].alive;
-  const b = [{ label: 'Start a new journey', primary: true, onClick: () => { sfx.title(); occupationScreen(); } }];
+  const b = [{ label: 'Quick start', sub: 'name yourself and go. We pack for you.', primary: true, onClick: () => { sfx.title(); quickStart(); } }, { label: 'Start a new journey', sub: 'choose everything yourself', onClick: () => { sfx.title(); occupationScreen(); } }];
   if (hasSave) b.push({ label: `Continue ${esc(saved.party[0].name)}’s journey`, sub: `${dateStr(saved.day)} · ${saved.atNode ? 'at ' + esc(placeName(saved.segFrom)) : 'on the road'}`, onClick: () => { S = saved; resumeScreen(); } });
   b.push({ label: 'How to play', onClick: () => learnScreen(0) });
   b.push({ label: 'Top Ten travelers', onClick: () => topTenScreen() });
@@ -2118,6 +2128,7 @@ function storeScreen(id, after, haggled) {
     after();
   };
   const buttons = [{ label: tabriz ? 'Pay and go' : 'Done shopping', primary: true, onClick: leave }];
+  if (tabriz) buttons.push({ label: 'Recommended kit', sub: 'Mirza Ali packs for you', onClick: () => { Object.assign(q, kitFor(S.money)); sfx.coin(); refresh(); } });
   if (!haggled) buttons.push({ label: 'Haggle first', sub: 'a little game: better prices if you’re quick', onClick: () => haggleGame(id, mult => storeScreen(id, after, mult)) });
   screen(html, buttons);
   const refresh = () => {
@@ -2160,7 +2171,8 @@ function statusHTML() {
   const hl = healthLabel(avgHp()), left = remainingEst(), pct = Math.round(100 * S.traveled / Math.max(1, S.traveled + left));
   return `<dl class="status">${partyStrip()}
     <dt>Weather</dt><dd>${weatherLabel(S.weather)}${S.nightDays ? ' · traveling by night' : ''}</dd>
-    <dt>Health</dt><dd class="${hl === 'good' ? 'good' : hl === 'fair' ? '' : 'warn'}">${hl}</dd>
+    <dt>Health</dt><dd class="${hl === 'good' ? 'good' : hl === 'fair' ? '' : 'warn'}">${hl}${healthWhy()}</dd>
+    <dt>Feast</dt><dd>${feastLine()}</dd>
     <dt>Food</dt><dd>${Math.floor(S.food)} lb${S.food <= 0 ? ' <span class="warn">· none left!</span>' : ''}</dd>
     <dt>Water</dt><dd>${S.skins ? `${S.water.toFixed(1)} of ${S.skins} skins` : '<span class="warn">no water skins</span>'}</dd>
     <dt>Next stop</dt><dd>${next ? `${esc(placeName(next))} · ${plural(rem, 'farsakh')}` : '—'}</dd>
@@ -2217,7 +2229,8 @@ function menuScreen() {
   if (!at) opts.push({ label: 'Go hunting', sub: `${S.arrows} arrows`, onClick: huntMenu });
   opts.push({ label: 'Supplies and crew', onClick: suppliesScreen });
   opts.push({ label: 'More…', sub: 'map, chat, pace, rations, trade', onClick: moreScreen });
-  screen(`<h2>${at ? esc(placeName(id)) : 'By the side of the road'}</h2>${statusHTML()}`, opts, { hud: hudLine() });
+  const arr = S.justArrived && at; S.justArrived = false;
+  screen(`${arr ? `<p class="date">${dateStr(S.day)}</p>` : ''}<h2>${at ? esc(placeName(id)) : 'By the side of the road'}</h2>${arr ? `<p class="big">${tw(`You’ve reached ${at.name}!`)}</p>` : ''}${statusHTML()}`, opts, { hud: hudLine() });
 }
 function moreScreen() {
   screen(`<h2>More</h2>`, [
@@ -2419,12 +2432,8 @@ function arriveAt(id) {
 }
 function landmarkScreen(id) {
   setScene('node', { node: id });
-  const nd = N[id];
   setTimeout(() => { if (scene.mode === 'node') emote('p0', 'sparkle'); }, 500);
-  screen(`<p class="date">${dateStr(S.day)}</p><h2>${esc(placeName(id))}</h2><p class="big">${tw(`You’ve reached ${nd.name}!`)}</p>`, [
-    { label: 'Look around', primary: true, onClick: () => exploreScreen() },
-    { label: 'Not now', onClick: menuScreen },
-  ]);
+  S.justArrived = true; menuScreen();
 }
 function leaveNode() {
   const id = S.segFrom;
@@ -3267,6 +3276,78 @@ function buzkEnd() {
   save();
   setScene(S.atNode ? 'node' : 'walk', S.atNode ? { node: S.segFrom } : {});
   b.onDone([msg(text, { title: 'Buzkashi', sound: b.mine ? 'good' : 'bad' }), hurt]);
+}
+
+
+/* ---------- v5: quick start, kit, status hints, barks ---------- */
+function kitFor(money) {
+  const k = { camels: 4, food: 1000, coats: 5, bundles: 4, saddles: 2, skins: 10, letter: 1, rue: 1, bead: 1 };
+  const cost = () => k.camels * 40 + k.food * 0.15 + k.coats * 10 + k.bundles * 2 + k.saddles * 10 + k.skins * 4 + k.letter * 30 + k.rue * 2 + k.bead * 6;
+  const cuts = [['bead', 0], ['rue', 0], ['saddles', 1], ['food', 800], ['bundles', 2], ['camels', 3], ['skins', 8], ['coats', 4], ['food', 650], ['saddles', 0], ['letter', 0], ['food', 500]];
+  for (const [key, v] of cuts) { if (cost() <= money * 0.92) break; k[key] = v; }
+  return k;
+}
+function quickStart() {
+  newGame('merchant');
+  S.party = [mkMember('You', true), ...[1, 2, 3, 4].map(i => mkMember(CREW[i].name, false))]; addCamels(3);
+  setScene('walk', { moving: false });
+  setTimeout(() => emote('goat', 'heart', 2.6), 900);
+  screen(`<h2>Your caravan</h2><div class="nrow">${faceImg(0, 'happy', '')}<input class="txt" id="nm0" maxlength="16" autocomplete="off" spellcheck="false" aria-label="Your name" placeholder="Your name"></div><div class="strip qs">${[1, 2, 3, 4].map(i => `<div class="pm">${faceImg(i, 'happy', CREW[i].name)}<span>${CREW[i].name}</span><small>${CREW[i].role}</small></div>`).join('')}</div><p>${tw('Four travelers, five camels from Mirza Ali’s bazaar and a goat nobody remembers buying. It is coming anyway.')}</p><p class="dim">${tw('Everyone brings Timur a gift. You have nothing yet. Keep your eyes open on the road.')}</p>`,
+    [{ label: 'Set off for Samarkand', primary: true, onClick: () => {
+      const v = ($('#nm0').value || '').trim() || pick(['Farrukh', 'Gulnara', 'Rustam', 'Laylo', 'Jamshid', 'Sitora']);
+      S.party = [mkMember(v, true), ...[1, 2, 3, 4].map(i => mkMember(CREW[i].name, false))];
+      S.day = dayOf(3, 1); S.herd = []; S.camels = 0;
+      const k = kitFor(S.money); k.camels += 1;
+      const cost = k.camels * 40 + k.food * 0.15 + k.coats * 10 + k.bundles * 2 + k.saddles * 10 + k.skins * 4 + k.letter * 30 + k.rue * 2 + k.bead * 6;
+      S.money = Math.round((S.money - cost) * 100) / 100; addCamels(k.camels); S.food += k.food; S.coats += k.coats; S.arrows += k.bundles * 20; S.saddles += k.saddles; S.skins += k.skins; S.letter = !!k.letter; S.items.rue = k.rue; S.items.bead = k.bead; S.water = S.skins;
+      sfx.coin(); save(); departTabriz();
+    } }], { focus: false });
+}
+function feastLine() {
+  const d = FEAST_START - S.day;
+  if (d > 0) return `starts in ${plural(d, 'day')}${d < 30 ? ' <span class="warn">· hurry!</span>' : ''}`;
+  if (S.day <= FEAST_END) return `<span class="good">on now!</span> ends in ${plural(FEAST_END - S.day, 'day')}`;
+  return '<span class="warn">over. Timur has left.</span>';
+}
+function healthWhy() {
+  if (S.atNode) return avgHp() < 70 ? ' <span class="why">· rest here to recover</span>' : '';
+  const e = edgeOf(S.segFrom), region = e ? e.region : 'plateau', t = S.weather.temp, parts = [];
+  parts.push(['pace', S.army ? -2 : [0, -1.3, -2.6, -4][S.pace]]);
+  parts.push(['rations', [0, 0.4, -0.7, -1.8][S.rations]]);
+  if (t === 5) parts.push(['heat', S.nightDays ? -0.6 : region === 'desert' ? -2.4 : -1.6]); else if (t === 4) parts.push(['heat', -0.4]);
+  if (t <= 1) parts.push(['cold', S.coats < alive().length ? (t === 0 ? -3.5 : -1.5) : (t === 0 ? -0.6 : 0)]);
+  if (S.food <= 0) parts.push(['hunger', -5]); if (S.thirstDays) parts.push(['thirst', -10]);
+  const shown = parts.filter(([, v]) => Math.abs(v) >= 0.4).map(([k, v]) => `${k} ${v > 0 ? '+' : '−'}${Math.abs(v)}`);
+  return shown.length ? ` <span class="why">· per day: ${shown.join(', ')}. Resting heals.</span>` : '';
+}
+const BARKS = {
+  1: ['Has anyone boiled the water?', 'Stick out your tongue. No reason.', 'I am not worried. I am a doctor. I am worried.', 'Your liver looks fine. From here.'],
+  2: ['How many days now?', 'Do you think elephants get homesick?', 'I can smell apricots. I can’t. But I can.', 'Ba-dum. Ba-dum. Sorry. Drum habit.'],
+  3: ['Bulbul is sulking again.', 'Camels can smell water a day away.', 'Too much sky? No such thing.', 'Lola likes you. She doesn’t like anyone.'],
+  4: ['That cloud looks like a hoopoe.', 'Chapter nine: the goat again.', 'How do you say “sand” in Turkish? Sand.', 'Pharaoh would hate this road.'],
+  guest: ['Nino would laugh at these hats.', 'In Georgia this hill would have a church on it.', 'Thank you. I keep saying it.'],
+};
+const BARK_LOW = ['I need to sit down.', 'My feet have stopped talking to me.', 'Can we rest? Asking for my legs.'];
+let bark = { el: null, k: null, t: 0, next: 6 };
+function barkTick(dt) {
+  if (!bark.el) { bark.el = document.createElement('div'); bark.el.className = 'bark'; bark.el.hidden = true; bark.el.setAttribute('aria-hidden', 'true'); cv.parentElement.appendChild(bark.el); }
+  const on = S && scene.mode === 'walk' && travelling && scene.moving && !reduceMotion;
+  if (!on) { bark.el.hidden = true; bark.k = null; return; }
+  if (bark.k) {
+    bark.t -= dt; const a = ANCH[bark.k];
+    if (bark.t <= 0 || !a) { bark.el.hidden = true; bark.k = null; bark.next = rnd(7, 12); return; }
+    bark.el.style.left = clamp(a[0] / W * 100, 20, 80) + '%'; bark.el.style.top = ((a[1] - 6) / H * 100) + '%';
+    return;
+  }
+  bark.next -= dt; if (bark.next > 0) return;
+  const pool = alive().filter(m => !m.leader).map(m => S.party.indexOf(m)).filter(i => ANCH['p' + i]);
+  if (S.guest && ANCH.guest) pool.push('guest');
+  if (!pool.length) { bark.next = 8; return; }
+  const i = pick(pool), m = i === 'guest' ? null : S.party[i];
+  let line = m && m.hp < 40 ? pick(BARK_LOW) : m && m.sick ? 'I am fine. Totally fine.' : S.food < 60 && chance(0.5) ? 'Is anyone else hungry?' : S.skins && S.water < 1.5 && chance(0.5) ? 'My mouth is made of sand.' : pick(BARKS[i]);
+  if (chance(0.12)) { bark.k = 'goat'; line = pick(['Meh.', 'Mehhh.', 'Meh!']); } else bark.k = i === 'guest' ? 'guest' : 'p' + i;
+  bark.el.textContent = plainq(line); bark.el.hidden = false; bark.t = 3.4;
+  try { SND.blip(bark.k === 'goat' ? 'goat' : i === 'guest' ? 'guest' : LOOKS[i].voice, 60 + line.length, line.includes('?'), 4); } catch (e) {}
 }
 
 /* ---------- boot ---------- */
