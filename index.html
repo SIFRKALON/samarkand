@@ -505,6 +505,7 @@ const WONDERS = {
   melon: { name: 'The best melon in Khorasan', v: 550, desc: 'Golden, enormous, and slightly ticking toward overripe.', perish: 16 },
   kashkul: { name: 'A dervish’s begging bowl', v: 350, desc: 'Carved from a coconut that came from somewhere very far away.' },
   lapis: { name: 'A lapis lazuli as blue as midnight', v: 400, desc: 'From Badakhshan, with flecks of gold like stars.' },
+  porcelain: { name: 'A blue-and-white dragon bowl', v: 500, desc: 'Ming porcelain from Jingdezhen, packed in tea leaves. Do not let the goat near it.' },
   canon: { name: 'Ibn Sina’s Canon of Medicine', v: 450, desc: 'Five fat volumes. Anahit keeps trying to borrow it.' },
 };
 const LEGENDS = [
@@ -519,6 +520,7 @@ const LEGENDS = [
   { t: 'The tortoise and the two ducks', s: 'Two ducks and a tortoise lived by a pond that was drying up. The ducks offered to fly the tortoise to a new lake. He would bite the middle of a stick, and they would each hold an end. “Whatever happens, do not talk,” they said. Over a village, people pointed and laughed: look, ducks carrying a tortoise! The tortoise opened his mouth to say mind your own business. This one is from Kalila and Dimna, and storytellers always finish it by staring at someone in the audience who talks too much.', flag: null },
   { t: 'Amar’s bottomless bag', s: 'Amar the trickster, best friend of the hero Amir Hamza, had a bag with no bottom. Into it went an army’s tents, three elephants, a sorcerer’s beard and an enemy king, still eating his dinner. When a giant asked what was in the bag, Amar said: only my lunch. The giant reached in to check and was never seen again. The bazaar storytellers can tell Hamza’s adventures for a whole year of evenings and still not finish.', flag: null },
   { t: 'Rostam’s horse', s: 'Rostam, the greatest hero of the Shahnameh, lay down to sleep in a meadow full of reeds. A lion crept out to eat him. His horse Rakhsh, red as a rose, kicked the lion and bit it until it was dead. When Rostam woke up, he scolded Rakhsh for fighting alone. “If he had killed you, how would I carry my armor?” Rakhsh, who had just saved his life, did not look at him for the rest of the day.', flag: null },
+  { t: 'The monkey and the crocodile', s: 'A monkey lived in a rose-apple tree by a river and gave fruit to a crocodile every day. The crocodile’s wife wanted to eat the monkey’s heart, which she assumed must be very sweet. So the crocodile offered the monkey a ride across the river, and halfway over, he told him the plan. “Oh no,” said the monkey. “I keep my heart up in the tree. Take me back and I will get it for you.” The crocodile turned around. The monkey climbed the tree and never came down again. That one is from the Panchatantra.', flag: null },
   { t: 'Shahrazad', s: 'A cruel king married a new bride every night and killed her every morning. Then Shahrazad married him. That night she told him a story and stopped at the most exciting part, so he let her live another day to finish it. She did this for a thousand and one nights. By the end the king had forgotten he ever wanted to kill anyone, and they had three children. Storytellers on the Silk Road still stop at the most exciting part. Then they pass the hat.', flag: null },
 ];
 
@@ -1072,12 +1074,14 @@ function sickEvent(m, kind) {
     opts.push({ label: 'Say a prayer and spit three times', sub: 'works now and then', run: () => chance(0.4) ? cureMsg(m, 'You pray and spit three times, carefully, over your left shoulder. It works. Yaqub says it was a coincidence and spits anyway.') : msg('You pray and spit three times. Nothing happens, except that the goat is now offended.') });
   }
   if (kind === 'jinn') {
+    if (S.items.rue) opts.push({ label: 'Burn wild rue around them', sub: 'jinn hate the smoke · usually works', run: () => { S.items.rue--; return chance(0.75) ? cureMsg(m, 'The isfand seeds pop and crackle. {n} sneezes twice, and the jinn leaves with the second sneeze.') : msg('The rue crackles. The jinn coughs, but stays.'); } });
     opts.push({ label: 'Put iron under their pillow', sub: 'jinn hate iron · works about half the time', run: () => chance(remedyOdds(0.4)) ? cureMsg(m, 'You slide a knife under {n}’s pillow. In the night they sit up, say thank you to nobody, and sleep like a stone. The jinn is gone.') : msg('You slide a knife under their pillow. The jinn does not seem to mind iron. It may be a very modern jinn.') });
     if (has('otabek') && m.name !== 'Otabek') opts.push({ label: 'Otabek plays music to coax it out', sub: 'usually works', run: () => chance(0.6) ? cureMsg(m, 'Otabek plays his dutar all evening, softer and softer. At midnight {n} laughs, yawns and says the visitor has left.') : msg('Otabek plays for hours. The jinn requests another song.') });
     opts.push({ label: 'Take them to a shrine', sub: 'cured at the next town', run: () => { m.care = 0.08; S.flags.shrineCure = m.name; return msg(`You will find a shrine at the next town. ${n} ${m.leader ? 'agree' : 'agrees'}, in between conversations with no one.`); } });
   }
   if (kind === 'plague') {
     opts.push({ label: 'Keep them apart from everyone', sub: 'stops it spreading', run: () => { S.flags.isolate = m.name; return msg(`${n} ${m.leader ? 'walk' : 'walks'} a hundred paces behind the caravan and ${m.leader ? 'sleep' : 'sleeps'} alone. You leave food on a stone. It is the right thing to do and it is awful.`); } });
+    if (S.items.tiryaq) opts.push({ label: 'Give them theriac', sub: `you have ${S.items.tiryaq} · strong medicine`, run: () => { S.items.tiryaq--; m.hp = Math.min(100, m.hp + 15); m.care = 0.25; return chance(0.4) ? cureMsg(m, 'Theriac, honey and viper. {n} recovers, against all the odds.') : msg('The theriac helps. The plague is stubborn.'); } });
     opts.push({ label: 'Burn their bedding and a coat', sub: 'uses a felt coat', disabled: S.coats < 1, run: () => { S.coats--; S.flags.isolate = m.name; m.care = 0.04; return msg('You burn the bedding and a felt coat. The fleas go with them. Most of the fleas.'); } });
   }
   if (kind === 'heat') {
@@ -1205,7 +1209,7 @@ function banterEvent() {
   return msg(line === 'fact' ? `Aybike says: “${pick(CAMEL_FACTS)}”` : line, { who: 'p' + i, emo: pick(['heart', 'note', 'sparkle']) });
 }
 const EVENTS = [
-  { w: c => 11 + (S.pace - 1) * 4 + (S.rations - 1) * 3 + (avgHp() < 50 ? 4 : 0) + (S.army ? 3 : 0), run: c => { const m = healthyPick(); return m ? sickEvent(m, pickIllness(c)) : null; } },
+  { w: c => (11 + (S.pace - 1) * 4 + (S.rations - 1) * 3 + (avgHp() < 50 ? 4 : 0) + (S.army ? 3 : 0)) * ((S.ward || 0) > S.day ? 0.4 : 1), run: c => { const m = healthyPick(); return m ? sickEvent(m, pickIllness(c)) : null; } },
   { w: c => c.rest ? 1 : 4, run: c => {
       const m = healthyPick(); if (!m || m.inj) return null;
       const kind = weighted({ arm: 25, leg: 14, bite: S.camels ? 30 : 0, scorpion: (c.region === 'desert' || c.region === 'khorasan') ? 15 : 0, snake: (c.region === 'desert' || c.region === 'oasis') ? 10 : 0 });
@@ -1214,7 +1218,7 @@ const EVENTS = [
       const biter = kind === 'bite' ? (camelIdx('Sultan') >= 0 ? 'Sultan' : someCamel()) : null;
       return msg(kind === 'bite' ? `${biter} has bitten ${m.leader ? 'you' : esc(m.name)}. ${biter === 'Sultan' ? 'Sultan feels this settles the question of who is in charge.' : 'Nobody knows why.'}` : `${who(m)} ${second(m, INJ[kind].has)}.${has('anahit') && m.name !== 'Anahit' ? ' Anahit sets it, scolding the whole time.' : ''}`, { sound: 'bad', who: 'p' + S.party.indexOf(m), emo: 'sweat' });
     } },
-  { w: c => S.camels > 0 ? (2.5 + (S.pace === 3 ? 4 : 0) + (c.thirsty ? 6 : 0)) * (S.occ === 'herder' ? 0.5 : 1) * (has('aybike') ? 0.5 : 1) : 0, run: () => camelDeath('{c} lies down in the road in the morning and does not get up.') },
+  { w: c => S.camels > 0 ? (2.5 + (S.pace === 3 ? 4 : 0) + (c.thirsty ? 6 : 0)) * (S.occ === 'herder' ? 0.5 : 1) * (has('aybike') ? 0.5 : 1) * (S.items.bead ? 0.6 : 1) : 0, run: () => camelDeath('{c} lies down in the road in the morning and does not get up.') },
   { w: c => S.camels > 0 && !c.rest ? 2.5 : 0, run: () => { const nm = someCamel(); loseDays(1); if (chance(has('aybike') ? 0.12 : 0.3)) { loseCamels(1, camelIdx(nm)); return msg(`${nm} wandered off in the night. You spend a day looking. You do not find ${nm}. Somewhere out there a camel is living its best life.`, { sound: 'bad' }); } return msg(`${nm} wandered off in the night. You spend a day finding ${nm}. ${nm} is not sorry.`); } },
   { w: () => S.army ? 0 : 3, run: () => { const s = stealable(); return s ? msg(`A thief comes during the night and steals ${s}.`, { sound: 'bad' }) : null; } },
   { w: c => c.rest ? 0 : ({ desert: 4, plateau: 2.5, khorasan: 2.5, mountain: 3, oasis: 1.2 }[c.region]), run: c => {
@@ -1242,7 +1246,7 @@ const EVENTS = [
       const lost = Math.min(Math.floor(S.food), ri(40, 80)); S.food -= lost;
       return msg(`${opener} You have no spare. You leave ${lost} pounds of food by the road.`, { sound: 'bad' });
     } },
-  { w: () => S.skins > 0 ? 2 : 0, run: () => { S.skins--; S.water = Math.min(S.water, S.skins); return msg(pick(['A water skin has burst.', 'A water skin has sprung a leak. Now it is just a skin.'])); } },
+  { w: () => S.skins > 0 ? 2 : 0, run: () => { S.skins--; S.water = Math.min(S.water, S.skins); return msg(pick(['A water skin has burst.', 'A water skin has sprung a leak. Now it is just a skin.']) + ` You have ${plural(S.skins, 'water skin')} left.`, { sound: 'bad' }); } },
   { w: () => S.letter ? 2.2 : 0, run: () => ({ type: 'choice', title: 'The goat', who: 'goat', emo: 'heart', sound: 'bad', text: 'The goat has eaten your travel letter.', options: [
       { label: 'Wait for the goat to give it back', sub: 'lose a day', run: () => { loseDays(1); S.letter = false; if (chance(0.35)) { S.letter = true; return msg('After a long and unpleasant day, you recover the letter. It is mostly legible. You decide not to think about it.'); } return msg('After a long and unpleasant day, it is clear the letter is gone for good.'); } },
       { label: 'Let it go', sub: 'scribes in Mashhad, Merv and Balkh sell new ones', run: () => { S.letter = false; return msg('You let it go. You will need a new letter before the Oxus. The goat seems lighter.'); } },
@@ -1294,6 +1298,15 @@ const EVENTS = [
   { w: () => camelIdx('Bulbul') >= 0 ? 1.2 : 0, run: () => { alive().forEach(m => m.hp = Math.max(1, m.hp - 2)); return msg('Bulbul groans all night, with great feeling. Nobody sleeps. In the morning she looks very refreshed.', { who: 'c0', emo: 'note' }); } },
   { w: () => has('otabek') ? 1.4 : 0, run: () => { alive().forEach(m => m.hp = Math.min(100, m.hp + 3)); return msg('After supper Otabek plays the dutar, two strings and a hundred songs. Even Sultan the camel stops chewing to listen.', { who: 'p2', emo: 'note' }); } },
   { w: () => 3, run: () => banterEvent() },
+  { w: c => !S.flags.armenians && c.region === 'plateau' ? 1.8 : 0, run: () => { S.flags.armenians = true; S.food += 20; alive().forEach(m => m.hp = Math.min(100, m.hp + 5)); return msg(`A band of Armenian pilgrims passes, singing sharakan, the old hymns, in harmonies that seem to come out of the hills. ${has('anahit') ? 'Anahit walks with them for an hour, singing the low part, and comes back with lavash and a blessing from a priest who knew her teacher at Tatev.' : 'They give you lavash, thin bread baked on hot stones, and a blessing.'} <span class="good">Everyone gains 5 health. +20 lb food.</span>`, { title: 'Pilgrims', who: 'p1', emo: 'note' }); } },
+  { w: c => !S.flags.multani && (c.region === 'khorasan' || c.region === 'desert') ? 1.6 : 0, run: () => { S.flags.multani = true; return { type: 'choice', title: 'Merchants from Multan', who: 'p0', emo: 'sparkle', text: 'A caravan from Multan, on the Indus, is heading for Samarkand too: bales of indigo, cotton cloth, and a Hindu caravan master in a white turban who has done this trip nineteen times. He says your Kalila and Dimna stories came from India first, from a book called the Panchatantra.', options: [
+      { label: 'Ask for a Panchatantra story', run: () => legendItem(LEGENDS.find(L => L.t === 'The monkey and the crocodile'), 'He settles by the fire and tells it with his hands.') },
+      { label: 'Trade with them', run: () => ({ type: 'fn', fn: next => tradeScreen(next, true) }) },
+      { label: 'Travel together for a while', run: () => { alive().forEach(m => m.hp = Math.min(100, m.hp + 3)); S.food += 15; return msg('You travel together for two days. They cook with mustard oil and share it. Their camels and your camels form complicated opinions. <span class="good">+3 health, +15 lb food.</span>'); } } ] }; } },
+  { w: c => !S.flags.porcelain && !S.wonders.porcelain && (c.region === 'mountain' || c.region === 'oasis' || c.region === 'desert') ? 1.3 : 0, run: () => { S.flags.porcelain = true; return { type: 'choice', title: 'A caravan from China', who: 'p0', emo: '!', text: 'A small caravan coming west from China, one of the last before Timur closes the border for his war. A merchant unwraps a bowl from Jingdezhen: white as milk, painted with a blue dragon chasing a pearl. Even the goat goes quiet.', options: [
+      { label: 'Buy the dragon bowl', sub: `${money(140)} · you have ${money(S.money)}`, disabled: S.money < 140, run: () => { S.money -= 140; return getWonder('porcelain', 'He packs it in a box of tea leaves. “Do not let the goat near it,” he says. He has met goats.'); } },
+      { label: 'Just look', run: () => msg('You look for a long time. Then you thank him and he wraps it up again, slowly, the way you would cover a sleeping baby.') } ] }; } },
+  { w: c => !S.flags.zoroastrian && (c.region === 'plateau' || c.region === 'khorasan') ? 1.3 : 0, run: () => { S.flags.zoroastrian = true; alive().forEach(m => m.hp = Math.min(100, m.hp + 4)); return msg('At the evening halt, an old Zoroastrian from Yazd sits down by your fire carrying a small brass urn. Inside are embers from a fire his people say has burned for a thousand years. He prays toward your flames, quietly, then adds a single ember of his own. All night your fire burns warm and steady and does not smoke. <span class="good">Everyone gains 4 health.</span>', { title: 'The fire from Yazd', scene: { mode: 'fire' } }); } },
 ];
 function rollEvent(c) {
   if (!chance(c.rest ? 0.12 : 0.2)) return null;
@@ -2093,19 +2106,20 @@ const ADVICE = {
   saddles: 'Packsaddles break. Bring spares, or bring a saddle maker.',
   skins: 'Each holds a day of water for your whole party. Ten is about right.',
   letter: 'A scribe writes down whence you come and whither you go. No letter, no Oxus ferry.',
-  rue: 'Wild rue seeds, called isfand. When someone catches the evil eye, you drop a pinch on the coals and wave the crackling smoke around them. Each pouch is one cure.',
-  bead: 'A blue glass bead, a nazar. Hang it on a camel and the evil eye mostly looks elsewhere, so your crew catches it far less often. It also cures someone who already has it.',
+  rue: 'Wild rue seeds, called isfand. Burn a pinch over the camp and the smoke keeps sickness and jinn away for a week. It also cures the evil eye and drives off jinn.',
+  bead: 'A blue glass bead, a nazar. Hang it on the lead camel and the evil eye mostly looks elsewhere: your crew catches it far less often, and the camels stay healthier.',
+  tiryaq: 'Theriac, the great cure-all: seventy ingredients, including honey, opium and dried viper. Give a jar to anyone sick or hurt from your supplies screen. Big heal, and often a cure.',
 };
 function storeScreen(id, after, haggled) {
   const nd = N[id], m = (nd.store || 1) * (haggled || 1), tabriz = id === 'tabriz';
   setScene('store', { keeper: tabriz ? MIRZA : lookFor('A shopkeeper in ' + nd.name) });
-  const pr = { camels: PRICES.camels * m, food: PRICES.food * m, coats: PRICES.coats * m, bundles: PRICES.bundles * m, saddles: PRICES.saddles * m, skins: PRICES.skins * m, letter: (nd.letter || 0), rue: 2 * m, bead: 6 * m };
-  const q = { camels: 0, food: 0, coats: 0, bundles: 0, saddles: 0, skins: 0, letter: 0, rue: 0, bead: 0 };
+  const pr = { camels: PRICES.camels * m, food: PRICES.food * m, coats: PRICES.coats * m, bundles: PRICES.bundles * m, saddles: PRICES.saddles * m, skins: PRICES.skins * m, letter: (nd.letter || 0), rue: 2 * m, bead: 6 * m, tiryaq: 12 * m };
+  const q = { camels: 0, food: 0, coats: 0, bundles: 0, saddles: 0, skins: 0, letter: 0, rue: 0, bead: 0, tiryaq: 0 };
   const rows = [
     ['camels', 'Camels', 1, `${money(pr.camels)} each`, S.camels], ['food', 'Food (lb)', 50, `${money(pr.food)} a pound`, Math.floor(S.food)],
     ['coats', 'Felt coats', 1, `${money(pr.coats)} each`, S.coats], ['bundles', 'Arrows', 1, `${money(pr.bundles)} a bundle`, S.arrows],
     ['saddles', 'Spare packsaddles', 1, `${money(pr.saddles)} each`, S.saddles], ['skins', 'Water skins', 1, `${money(pr.skins)} each`, S.skins],
-    ['rue', 'Wild rue', 1, `${money(pr.rue)} a pouch`, S.items.rue || 0], ['bead', 'Blue bead', 1, money(pr.bead), S.items.bead || 0],
+    ['rue', 'Wild rue', 1, `${money(pr.rue)} a pouch`, S.items.rue || 0], ['bead', 'Blue bead', 1, money(pr.bead), S.items.bead || 0], ['tiryaq', 'Theriac', 1, `${money(pr.tiryaq)} a jar`, S.items.tiryaq || 0],
   ];
   if (nd.letter && S.letter !== true) rows.push(['letter', 'Travel letter', 1, money(pr.letter), 0]);
   const wares = Object.keys(WARES);
@@ -2120,7 +2134,7 @@ function storeScreen(id, after, haggled) {
     if (tabriz && S.camels + q.camels <= 0) { $('#storewarn').textContent = plainq('Mirza Ali: “No camels? Who is going to carry everything, the goat?”'); sfx.bad(); return; }
     S.money = Math.round((S.money - total) * 100) / 100;
     addCamels(q.camels); S.food += q.food; S.coats += q.coats; S.arrows += q.bundles * 20; S.saddles += q.saddles; S.skins += q.skins; if (q.letter) S.letter = true;
-    S.items.rue = (S.items.rue || 0) + q.rue; S.items.bead = (S.items.bead || 0) + q.bead;
+    S.items.rue = (S.items.rue || 0) + q.rue; S.items.bead = (S.items.bead || 0) + q.bead; S.items.tiryaq = (S.items.tiryaq || 0) + q.tiryaq;
     S.water = S.skins;
     if (total > 0) sfx.coin();
     save();
@@ -2253,12 +2267,15 @@ function suppliesScreen() {
   screen(`<h2>Supplies</h2><dl class="cards">
     <dt>Food</dt><dd>${Math.floor(S.food)} lb</dd><dt>Water skins</dt><dd>${S.skins} (${S.water.toFixed(1)} full)</dd><dt>Felt coats</dt><dd>${S.coats}</dd><dt>Arrows</dt><dd>${S.arrows}</dd>
     <dt>Packsaddles</dt><dd>${S.saddles} spare</dd><dt>Travel letter</dt><dd>${S.letter === 'forged' ? 'yes (Yaqub’s)' : S.letter ? 'yes' : '<span class="warn">no</span>'}</dd>
-    <dt>Purse</dt><dd>${money(S.money)}</dd>${goods.length ? `<dt>Goods</dt><dd>${listJoin(goods)}</dd>` : ''}${S.items.rue || S.items.bead ? `<dt>Charms</dt><dd>${listJoin([S.items.rue ? plural(S.items.rue, 'pouch', 'pouches') + ' of wild rue' : '', S.items.bead ? plural(S.items.bead, 'blue bead') : ''].filter(Boolean))}<br><span class="dim small">Burn rue when someone catches the evil eye. The bead keeps it away.</span></dd>` : ''}
+    <dt>Purse</dt><dd>${money(S.money)}</dd>${goods.length ? `<dt>Goods</dt><dd>${listJoin(goods)}</dd>` : ''}${S.items.rue || S.items.bead || S.items.tiryaq ? `<dt>Charms</dt><dd>${listJoin([S.items.rue ? plural(S.items.rue, 'pouch', 'pouches') + ' of wild rue' : '', S.items.bead ? plural(S.items.bead, 'blue bead') : '', S.items.tiryaq ? plural(S.items.tiryaq, 'jar') + ' of theriac' : ''].filter(Boolean))}<br><span class="dim small">Burn rue when someone catches the evil eye. The bead keeps it away.</span></dd>` : ''}
     ${S.receipts ? `<dt>Receipts</dt><dd>${S.receipts}, from Timur’s officers</dd>` : ''}<dt>Goat</dt><dd>1 (doing great)</dd></dl>
     <h2>Gifts for Timur</h2>${wonders ? `<div class="wonders">${wonders}</div>` : '<p class="dim">Nothing yet. Keep your eyes open.</p>'}
     <h2>Your crew</h2><div class="roster">${party}</div>
     <h2>Your camels</h2><div class="roster">${S.herd.length ? S.herd.map(c => `<div class="mem">${camelImg(c)}<div class="n">${esc(c.name)}<span class="bio">${c.bio}</span></div></div>`).join('') : '<p class="dim">No camels.</p>'}</div>`,
-    [{ label: 'Done', primary: true, onClick: menuScreen }]);
+    [{ label: 'Done', primary: true, onClick: menuScreen },
+      S.items.tiryaq ? { label: 'Give theriac', sub: `${S.items.tiryaq} left · to whoever needs it most`, onClick: () => { const m = alive().sort((a, b) => (b.sick || b.inj ? 50 : 0) - (a.sick || a.inj ? 50 : 0) + a.hp - b.hp)[0]; S.items.tiryaq--; m.hp = Math.min(100, m.hp + 25); let t = `${who(m)} ${m.leader ? 'take' : 'takes'} the theriac. It tastes like honey and regret.`; if (m.sick && chance(0.55)) { t += ` The ${SICK[m.sick].die.replace(/^an? /, '')} is gone.`; m.sick = null; m.care = 0; } if (m.inj) { m.injDays = Math.max(1, m.injDays - 4); t += ' The pain eases.'; } save(); runQueue([msg(`${t} <span class="good">+25 health.</span>`, { who: 'p' + S.party.indexOf(m), emo: 'heart', sound: 'good' })], suppliesScreen); } } : null,
+      S.items.rue ? { label: 'Burn wild rue over the camp', sub: (S.ward || 0) > S.day ? `protected for ${plural(S.ward - S.day, 'more day')}` : `${S.items.rue} left · less sickness for a week`, disabled: (S.ward || 0) > S.day, onClick: () => { S.items.rue--; S.ward = S.day + 7; save(); runQueue([msg('You drop isfand seeds on the coals. They pop and crackle, and the fragrant smoke drifts over the camels and the crew. Everyone feels watched over. <span class="good">Much less sickness for a week.</span>', { who: 'goat', emo: 'sparkle', sound: 'sparkle' })], suppliesScreen); } } : null,
+    ].filter(Boolean));
 }
 function chatScreen() {
   const opts = [1, 2, 3, 4].filter(i => S.party[i].alive).map(i => ({ label: S.party[i].name, sub: CREW[i].role, onClick: () => {
@@ -2291,7 +2308,9 @@ function leaveArmyPrompt(why) {
 function restScreen() {
   if (S.army) return leaveArmyPrompt('The army does not stop to rest.');
   const inn = S.atNode && N[S.segFrom].store, fee = 3;
-  screen(`<h2>${inn ? 'The caravanserai' : 'Rest'}</h2><p class="big">${inn ? `A room, a fire, fodder for the camels and other travelers to talk to: ${money(fee)} a night. Or camp outside the walls for free.` : 'How many days do you want to rest?'}</p><p class="dim">${S.party.filter(m => m.alive && m.hp < 60).length ? 'Some of your crew could really use it.' : 'Everyone is holding up, for now.'}</p>`,
+  const per = Math.round(4 + 0.7 + (has('otabek') ? 1 : 0) + (has('yaqub') ? 1 : 0) + (inn ? 2 : 0));
+  const why = [has('otabek') ? 'Otabek’s music +1' : '', has('yaqub') ? 'Yaqub’s verse +1' : '', inn ? 'a real roof +2' : ''].filter(Boolean).join(', ');
+  screen(`<h2>${inn ? 'The caravanserai' : 'Rest'}</h2><p class="callout">Each day of rest: about <b>+${per} health</b> for everyone${why ? ` (${why})` : ''}. Sick crew also recover faster.</p><p class="big">${inn ? `A room, a fire, fodder for the camels and other travelers to talk to: ${money(fee)} a night. Or camp outside the walls for free.` : 'How many days do you want to rest?'}</p><p class="dim">${S.party.filter(m => m.alive && m.hp < 60).length ? 'Some of your crew could really use it.' : 'Everyone is holding up, for now.'}</p>`,
     [1, 2, 3, 5].map(n => ({ label: plural(n, inn ? 'night' : 'day'), sub: inn ? money(n * fee) : null, disabled: inn && S.money < n * fee, onClick: () => doRest(n, inn) })).concat(inn ? [{ label: 'Camp outside for a night', sub: 'free', onClick: () => doRest(1, false) }] : []).concat([{ label: 'Never mind', onClick: menuScreen }]));
 }
 function doRest(n, inn) {
@@ -2574,12 +2593,12 @@ function huntGame({ bonus, onDone }) {
   if (S.arrows <= 0) { runQueue([msg('You have no arrows.')], onDone); return; }
   loseDays(1);
   const region = curRegionForHunt();
-  hunt = { t: 0, dur: 22, region, animals: [], arrows: [], kills: [], pops: [], taps: [], spawn: 0.4, total: 0, bonus, aim: 1, onDone, flash: '', over: false, bushes: Array.from({ length: 8 }, (_, i) => [hash(i + S.day) * W, 92 + hash(i * 3 + S.day) * 70]) };
+  hunt = { carry: Math.round((40 * alive().length + 60 * Math.min(S.camels, 3)) * (bonus ? 1.5 : 1)), t: 0, dur: 22, region, animals: [], arrows: [], kills: [], pops: [], taps: [], spawn: 0.4, total: 0, bonus, aim: 1, onDone, flash: '', over: false, bushes: Array.from({ length: 8 }, (_, i) => [hash(i + S.day) * W, 92 + hash(i * 3 + S.day) * 70]) };
   travelling = false; setScene('hunt', { region });
-  screen(`<h2>${bonus ? 'The ring hunt!' : 'Hunting'}</h2><p class="big">${bonus ? 'Thousands of riders close the ring, and animals pour in from every side.' : 'You head out into the brush with your bow.'}</p><p class="dim">Tap to shoot. Every tap costs an arrow. Arrows drop as they fly, so aim a little high and ahead of runners. A near miss sends them bolting.</p>`, [{ label: 'Stop hunting', onClick: () => huntEnd() }]);
+  screen(`<h2>${bonus ? 'The ring hunt!' : 'Hunting'}</h2><p class="big">${bonus ? 'Thousands of riders close the ring, and animals pour in from every side.' : 'You head out into the brush with your bow.'}</p><p class="dim">Tap to shoot. Every tap costs an arrow. Arrows drop as they fly, so aim a little high and ahead of runners. A near miss sends them bolting. Your crew and camels can haul about ${hunt.carry} lb back.</p>`, [{ label: 'Stop hunting', onClick: () => huntEnd() }]);
   huntHud();
 }
-function huntHud() { if (!hunt) return; setHud(`<span>Arrows <b>${S.arrows}</b></span><span>Bagged <b>${hunt.total}</b> lb</span><span>0:${String(Math.max(0, Math.ceil(hunt.dur - hunt.t))).padStart(2, '0')}</span>${hunt.flash ? `<span class="good">${hunt.flash}</span>` : ''}`); }
+function huntHud() { if (!hunt) return; setHud(`<span>Arrows <b>${S.arrows}</b></span><span>Bagged <b>${hunt.total}</b>/${hunt.carry} lb</span><span>0:${String(Math.max(0, Math.ceil(hunt.dur - hunt.t))).padStart(2, '0')}</span>${hunt.flash ? `<span class="good">${hunt.flash}</span>` : ''}`); }
 function huntShoot(p) {
   if (!hunt || hunt.over || S.arrows <= 0) return;
   S.arrows--; sfx.shoot();
@@ -2638,7 +2657,7 @@ function huntDraw() {
 }
 function huntEnd() {
   if (!hunt || hunt.over) return; hunt.over = true;
-  const h = hunt, carry = h.bonus ? 200 : 100, got = Math.min(h.total, carry);
+  const h = hunt, carry = h.carry, got = Math.min(h.total, carry);
   S.food += got; save();
   let text = h.total === 0 ? 'You didn’t hit anything. The animals seem relieved.' : `You bagged ${h.total} pounds of food!`;
   if (h.total > carry) text += ` But you can only carry ${carry} pounds back to the caravan.`;
@@ -2974,7 +2993,7 @@ function eatFood(text, fx) {
 /* ---------- v4: an attraction and a verse in every town ---------- */
 const SHOWS = {
   sultaniyya: { kind: 'polo', label: 'Watch the polo match', title: 'Chovgan', hp: 3, text: 'On the meadow below the dome, two teams play chovgan, which the Europeans will one day call polo: horses at full gallop, long hooked sticks and a ball of willow root. Persian kings have played it for a thousand years, and so have their queens. A herald shouts the score. Your camels watch in deep disapproval.' },
-  ray: { kind: 'rope', label: 'Watch the tightrope walker', title: 'The rope dancer', hp: 4, text: 'In the square, a rope walker in a pointed red hat dances along a rope strung as high as a minaret, with a long pole for balance and a drummer below. Halfway across, he sits down on the rope and eats an apple. The crowd loses its mind. The goat tries to climb the pole.' },
+  ray: { kind: 'rope', label: 'Watch the tightrope walker', title: 'The rope dancer', hp: 4, text: 'In the square, a rope walker in a pointed red hat dances along a rope strung as high as a minaret, with a long pole for balance and a drummer below. Halfway across, he sits down on the rope and eats an apple. The crowd loses its mind. The goat tries to climb the pole.', epi: ['Man is a rope stretched between the animal and the Superman, a rope over an abyss. A dangerous crossing, a dangerous wayfaring, a dangerous looking-back, a dangerous trembling and halting.', 'Nietzsche, Thus Spoke Zarathustra. Nobody here will read it for another 479 years.'] },
   ordu: { kind: 'elephants', label: 'See the elephant parade', title: 'The elephants of Delhi', hp: 3, text: 'Timur’s war elephants, brought back from India, parade through the camp in painted howdahs with bells on their ankles. Each has a keeper from Delhi who talks to it all day in Hindavi. One elephant gently lifts somebody’s hat, looks inside it, and puts it back.' },
   damghan: { kind: 'bear', label: 'Watch the dancing bear', title: 'The bear', hp: 3, text: 'A showman with a drum and a big brown bear. He beats the drum, and the bear stands up, turns in a slow circle and bows. Then the man passes a hat. Then the bear passes a hat. People give more to the bear.' },
   nishapur: { kind: 'naqqal', label: 'Hear the Shahnameh storyteller', title: 'The naqqal', hp: 4, text: 'In the bazaar, a storyteller called a naqqal hangs up a painted cloth crowded with heroes, demons and a white-haired baby in a giant bird’s nest. He points with a stick and acts out the Shahnameh: Rostam and his horse Rakhsh, the seven trials, the White Div. He does all the voices. When Rostam fights the White Div, he knocks over his own stool, and the crowd throws coins.' },
@@ -2987,7 +3006,7 @@ const SHOWS = {
 function showItem(id, sh) {
   if (sh.kind === 'buzk') return { type: 'fn', fn: next => buzkGame({ onDone: items => runQueue(items, next) }) };
   alive().forEach(m => m.hp = Math.min(100, m.hp + sh.hp)); save();
-  return msg(`${sh.text}<br><br><span class="good">Everyone gains ${sh.hp} health.</span>`, { title: sh.title, sound: 'sparkle', scene: { mode: 'show', kind: sh.kind, node: id } });
+  return msg(`${sh.text}<br><br><span class="good">Everyone gains ${sh.hp} health.</span>`, { after: sh.epi ? `<div class="verse"><p>${sh.epi[0]}</p><span class="at">${sh.epi[1]}</span></div>` : '', title: sh.title, sound: 'sparkle', scene: { mode: 'show', kind: sh.kind, node: id } });
 }
 const VERSES = {
   sultaniyya: ['The children of Adam are limbs of one body,<br>made of a single essence.<br>When the world hurts one limb,<br>the others cannot rest.', 'Saadi of Shiraz, 1258'],
@@ -3281,9 +3300,9 @@ function buzkEnd() {
 
 /* ---------- v5: quick start, kit, status hints, barks ---------- */
 function kitFor(money) {
-  const k = { camels: 4, food: 1000, coats: 5, bundles: 4, saddles: 2, skins: 10, letter: 1, rue: 1, bead: 1 };
-  const cost = () => k.camels * 40 + k.food * 0.15 + k.coats * 10 + k.bundles * 2 + k.saddles * 10 + k.skins * 4 + k.letter * 30 + k.rue * 2 + k.bead * 6;
-  const cuts = [['bead', 0], ['rue', 0], ['saddles', 1], ['food', 800], ['bundles', 2], ['camels', 3], ['skins', 8], ['coats', 4], ['food', 650], ['saddles', 0], ['letter', 0], ['food', 500]];
+  const k = { camels: 4, food: 1000, coats: 5, bundles: 4, saddles: 2, skins: 10, letter: 1, rue: 2, bead: 1, tiryaq: 2 };
+  const cost = () => k.camels * 40 + k.food * 0.15 + k.coats * 10 + k.bundles * 2 + k.saddles * 10 + k.skins * 4 + k.letter * 30 + k.rue * 2 + k.bead * 6 + k.tiryaq * 12;
+  const cuts = [['tiryaq', 1], ['bead', 0], ['rue', 1], ['tiryaq', 0], ['rue', 0], ['saddles', 1], ['food', 800], ['bundles', 2], ['camels', 3], ['skins', 8], ['coats', 4], ['food', 650], ['saddles', 0], ['letter', 0], ['food', 500]];
   for (const [key, v] of cuts) { if (cost() <= money * 0.92) break; k[key] = v; }
   return k;
 }
@@ -3298,8 +3317,8 @@ function quickStart() {
       S.party = [mkMember(v, true), ...[1, 2, 3, 4].map(i => mkMember(CREW[i].name, false))];
       S.day = dayOf(3, 1); S.herd = []; S.camels = 0;
       const k = kitFor(S.money); k.camels += 1;
-      const cost = k.camels * 40 + k.food * 0.15 + k.coats * 10 + k.bundles * 2 + k.saddles * 10 + k.skins * 4 + k.letter * 30 + k.rue * 2 + k.bead * 6;
-      S.money = Math.round((S.money - cost) * 100) / 100; addCamels(k.camels); S.food += k.food; S.coats += k.coats; S.arrows += k.bundles * 20; S.saddles += k.saddles; S.skins += k.skins; S.letter = !!k.letter; S.items.rue = k.rue; S.items.bead = k.bead; S.water = S.skins;
+      const cost = k.camels * 40 + k.food * 0.15 + k.coats * 10 + k.bundles * 2 + k.saddles * 10 + k.skins * 4 + k.letter * 30 + k.rue * 2 + k.bead * 6 + k.tiryaq * 12;
+      S.money = Math.round((S.money - cost) * 100) / 100; addCamels(k.camels); S.food += k.food; S.coats += k.coats; S.arrows += k.bundles * 20; S.saddles += k.saddles; S.skins += k.skins; S.letter = !!k.letter; S.items.rue = k.rue; S.items.bead = k.bead; S.items.tiryaq = k.tiryaq; S.water = S.skins;
       sfx.coin(); save(); departTabriz();
     } }], { focus: false });
 }
