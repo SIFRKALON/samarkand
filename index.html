@@ -456,8 +456,8 @@ const CREW = [
     lines: { plateau: 'When I marched west with the army, it took a whole year. Going home feels faster. Is that how it works?', khorasan: 'Did you know elephants cannot jump? Not even a little. I asked one.', desert: 'I am not scared of the desert. I am scared of the noises in the desert. That is different.', mountain: 'My mother lives on the other side of these mountains. She thinks I am dead. Surprise!', oasis: 'Smell that? Apricots. That is home.', goal: 'I was a drummer in Timur’s army until it forgot me in Tabriz. Now I am going home to my mother. I have a drum solo prepared.' } },
   { name: 'Aybike', from: 'Turkmen · from the Karakum', role: 'Camel handler', bio: 'Grew up in a felt tent among a thousand camels. Talks to the camels more than to people, and the camels seem to prefer it.', skill: 'Camels stay healthier; finds water',
     lines: { plateau: 'Bulbul does not like hills. Bulbul does not like anything, actually.', khorasan: 'fact', desert: 'This is my grandmother’s country. Black sand, white salt, no water you can see. There is water. You just have to know where.', mountain: 'Camels hate mountains. I hate mountains. We have a lot in common.', oasis: 'Too many trees. Where do they keep the sky?', goal: 'I have never seen a city bigger than a wedding. I would like to see the biggest one, once, and then go home.' } },
-  { name: 'Yaqub', from: 'Persian Jew · from Tabriz', role: 'Scribe and translator', bio: 'Writes letters for people who can’t, in five languages and four kinds of handwriting. Collects proverbs the way other people collect coins. Is secretly writing a book about this trip.', skill: 'Talks to anyone in their own language; can write a new travel letter',
-    lines: { plateau: 'Every village on this road talks a little differently. Persian in the bazaar, Turkish with the horses, Armenian at the well. The camels speak only complaint.', khorasan: 'My grandfather read us Attar’s Conference of the Birds with a different voice for every bird. His hoopoe was magnificent. His sparrow was mostly him complaining about his knees.', desert: 'I have written letters in five languages, and none of them has a word for this much sand.', mountain: 'My cousin in Samarkand promised me a job writing contracts for Timur’s builders. He also promised me a horse once.', oasis: 'The Jews of Bukhara are dyers, mostly. My cousins there have blue hands up to the elbows. I have eleven cousins there. Possibly fourteen.', goal: 'I am writing a book about this journey. So far it is mostly about the goat.' } },
+  { name: 'Yaqub', from: 'Persian Jew · from Tabriz', role: 'Scribe and poet', bio: 'Writes letters for people who can’t, in five languages. Knows four hundred lines of Shahin’s Book of Moses, a Persian epic written in Hebrew letters, and recites them whether or not anyone asks. Is secretly writing a book about this trip.', skill: 'Reads verse by the fire: everyone recovers faster when resting',
+    lines: { plateau: 'Every village on this road talks a little differently. Persian in the bazaar, Turkish with the horses, Armenian at the well. The camels speak only complaint.', khorasan: 'My grandfather read us Attar’s Conference of the Birds with a different voice for every bird. His hoopoe was magnificent. His sparrow was mostly him complaining about his knees.', desert: 'I have written poems in five languages, and none of them has a word for this much sand.', mountain: 'In Shahin’s book, Moses goes up the mountain alone and comes back with the law. I went up this one and came back with a cold.', oasis: 'Shahin of Shiraz wrote the story of Moses as a Persian epic, in Hebrew letters. Pharaoh gets the best insults. Ask me for one. Please. Anyone.', goal: 'I am writing a book about this journey. So far it is mostly about the goat.' } },
 ];
 const GUEST = { name: 'Davit', from: 'Georgian · from Tbilisi', bio: 'Taken in Timur’s raids on Georgia. His sister Nino was carried off to Samarkand to cut tiles for Timur’s mosque. He is going to find her.' };
 const CAMEL_POOL = [
@@ -959,7 +959,7 @@ function updateHealth(rest, starving, thirsty, region) {
     if (!rest) d += S.army ? -2 : [0, -1.3, -2.6, -4][S.pace];
     d += [0, 0.4, -0.7, -1.8][S.rations];
     if (!m.sick && !m.inj) d += 0.3;
-    if (rest) d += (S.segFrom === 'rabat' && S.atNode ? 6 : 4) + (has('otabek') ? 1 : 0);
+    if (rest) d += (S.segFrom === 'rabat' && S.atNode ? 6 : 4) + (has('otabek') ? 1 : 0) + (has('yaqub') ? 1 : 0);
     if (t === 4) d -= 0.4;
     if (t === 5) d -= S.nightDays ? 0.6 : region === 'desert' ? 2.4 : 1.6;
     if (t === 1 && coatsShort) d -= 1.5;
@@ -1188,7 +1188,7 @@ const BANTER = [
   [3, 'fact'],
   [4, 'Yaqub writes by firelight in a little book. When you ask what it is about, he covers the page. “The journey,” he says. “Mostly the goat.”'],
   [4, 'Yaqub teaches everyone to say thank you in Persian, Turkish, Armenian, Arabic and Hebrew. The goat learns none of them.'],
-  [4, 'Yaqub writes a letter for a herder who wants to tell his sister he is alive. He will not take any money for it.'],
+  [4, 'Yaqub recites Shahin’s Book of Moses by the fire, the part where the sea parts. Sultan the camel watches him the whole time, as if waiting for the sea.'],
 ];
 function banterEvent() {
   const opts = BANTER.filter(([i]) => crewAlive(i)); if (!opts.length) return null;
@@ -1236,7 +1236,6 @@ const EVENTS = [
   { w: () => S.skins > 0 ? 2 : 0, run: () => { S.skins--; S.water = Math.min(S.water, S.skins); return msg(pick(['A water skin has burst.', 'A water skin has sprung a leak. Now it is just a skin.'])); } },
   { w: () => S.letter ? 2.2 : 0, run: () => ({ type: 'choice', title: 'The goat', who: 'goat', emo: 'heart', sound: 'bad', text: 'The goat has eaten your travel letter.', options: [
       { label: 'Wait for the goat to give it back', sub: 'lose a day', run: () => { loseDays(1); S.letter = false; if (chance(0.35)) { S.letter = true; return msg('After a long and unpleasant day, you recover the letter. It is mostly legible. You decide not to think about it.'); } return msg('After a long and unpleasant day, it is clear the letter is gone for good.'); } },
-      has('yaqub') ? { label: 'Ask Yaqub to write a new one', sub: 'very nearly official', run: () => { S.letter = 'forged'; return msg('Yaqub writes a new letter in his most official handwriting and seals it with the bottom of an inkpot. “Whence and whither,” he says. “Perfectly clear.” It looks almost real.', { who: 'p4', emo: 'sparkle' }); } } : null,
       { label: 'Let it go', sub: 'scribes in Mashhad, Merv and Balkh sell new ones', run: () => { S.letter = false; return msg('You let it go. You will need a new letter before the Oxus. The goat seems lighter.'); } },
     ] }) },
   { w: () => S.food > 20 ? 1.2 : 0, run: () => { S.food -= 9; return msg('The goat has eaten 9 pounds of food. It seems fine.'); } },
@@ -1250,7 +1249,6 @@ const EVENTS = [
       const toll = ri(2, 6) * 5;
       return { type: 'choice', title: 'Riders', who: 'p0', emo: '!', text: `Riders block the road and ask for a toll of ${toll} tangas. Will you pay?`, options: [
         { label: `Pay ${toll} tangas`, sub: `you have ${money(S.money)}`, run: () => { if (S.money >= toll) { S.money -= toll; return msg('You pay. They thank you and ride off. Everyone is very polite about it.'); } const f = Math.min(Math.floor(S.food), ri(40, 90)); S.food -= f; return msg(`You do not have ${toll} tangas. They take ${f} pounds of food instead.`); } },
-        has('yaqub') ? { label: 'Let Yaqub talk to them', run: () => { if (chance(0.6)) return msg('Yaqub greets the riders in three languages until he finds theirs. He asks after their mothers, their horses and their mothers’ horses. Soon everyone is sharing bread, and nobody mentions the toll again.', { who: 'p4', emo: 'sparkle' }); if (S.money >= toll) S.money -= toll; else S.food = Math.max(0, S.food - 50); return msg('Yaqub greets them in three languages. They answer in a fourth, which is mostly swords. You pay the toll.', { sound: 'bad' }); } } : null,
         { label: 'Refuse', run: () => {
             if (chance(0.5)) return msg('They talk it over and decide you are not worth the trouble.');
             const taken = []; if (S.camels > 1) { const nms = loseCamels(Math.min(S.camels - 1, ri(1, 2))); taken.push(listJoin(nms)); }
@@ -2450,7 +2448,7 @@ function davitScene() {
     before: `<p class="date">${dateStr(S.day)} · ${money(S.money)}</p><p>${tw('On your way out through the bazaar you pass the slave market. A dealer is selling captives from Timur’s raids on Georgia. One of them, a boy about Otabek’s age, asks where you are going. When you say Samarkand, he grabs your sleeve.')}</p>`,
     line: 'My sister Nino is in Samarkand. They took her to cut tiles for the new mosque. Please. I just want to find her.',
     buttons: [
-      { label: 'Buy his freedom', sub: `${money(price)} · you have ${money(S.money)}`, primary: true, disabled: S.money < price, onClick: () => { S.money -= price; S.guest = 'Davit'; save(); runQueue([msg(`${has('yaqub') ? 'Yaqub writes out a letter of freedom in his finest hand, and makes the dealer sign it twice.' : 'The dealer writes out a letter of freedom and takes your money.'} Davit reads it three times. Then he asks if he can walk with you to Samarkand. Otabek has already given him half his bread.`, { title: 'Davit', sound: 'sparkle', who: 'p2', emo: 'heart' })], () => leaveNode()); } },
+      { label: 'Buy his freedom', sub: `${money(price)} · you have ${money(S.money)}`, primary: true, disabled: S.money < price, onClick: () => { S.money -= price; S.guest = 'Davit'; save(); runQueue([msg(`${has('yaqub') ? 'Yaqub writes out the letter of freedom in his finest hand and reads it aloud to Davit, slowly, twice.' : 'The dealer writes out a letter of freedom and takes your money.'} Davit reads it three times. Then he asks if he can walk with you to Samarkand. Otabek has already given him half his bread.`, { title: 'Davit', sound: 'sparkle', who: 'p2', emo: 'heart' })], () => leaveNode()); } },
       { label: 'Give him your bread and walk on', onClick: () => { S.food = Math.max(0, S.food - 10); runQueue([msg('You give him what bread you have. He thanks you. You do not look back, and then you do.')], () => leaveNode()); } },
       { label: 'Walk on', onClick: () => runQueue([msg('You walk on. Behind you, the dealer starts calling out prices again.')], () => leaveNode()) },
     ] });
@@ -2812,7 +2810,7 @@ function reunions(then) {
   if (S.guest) { S.flags.reunited = true; items.push(msg(`At the half-built mosque, Davit walks along the rows of tile cutters calling a name. Halfway down, a girl drops her chisel.${S.flags.bird ? ' He gives her the wooden bird he carved on the road. She sets it on her workbench, where it will watch her cut tiles for years.' : ''} Nobody gets any work done for the rest of the afternoon.`, { title: 'Davit finds Nino', sound: 'sparkle', date: false, scene: { mode: 'reunion', a: GLOOK, b: NINO, prop: S.flags.bird ? 'bird' : null } })); }
   if (has('anahit')) items.push({ type: 'say', who: 'Anahit', look: LOOKS[1], node: 'samarkand', mode: 'talk', line: 'There is a hospital here that treats fevers with sherbet and sadness with music. They have offered me a place. My teacher at Tatev is going to hate this. I am going to write him a very long letter.' });
   if (has('aybike')) items.push({ type: 'say', who: 'Aybike', look: LOOKS[3], node: 'samarkand', mode: 'talk', line: 'I have seen the biggest city in the world. It is too big. Tomorrow I am buying four camels and going home to the Karakum.', aside: 'At the city gate she turns around. “Bring the goat to visit,” she says. “The camels will ask.”' });
-  if (has('yaqub')) items.push({ type: 'say', who: 'Yaqub', look: LOOKS[4], node: 'samarkand', mode: 'talk', line: 'My book is finished. I have called it The Samarkand Trail. There is a chapter about each of you. The longest chapter is about the goat.', aside: 'His cousin is real, and so is the job. The horse is still not real.' });
+  if (has('yaqub')) items.push({ type: 'say', who: 'Yaqub', look: LOOKS[4], node: 'samarkand', mode: 'talk', line: 'My book is finished. I have called it The Samarkand Trail. There is a chapter about each of you. The longest chapter is about the goat.', aside: 'That night he reads the first chapter aloud in the bazaar. A storyteller with one enormous eyebrow asks to borrow it.' });
   runQueue(items, then);
 }
 function dazzleScreen() {
@@ -3002,7 +3000,7 @@ const BEATS = {
   sardoba: [[1, 'Somebody built this so that strangers wouldn’t die. That is the best medicine on this whole road: water, in the right place. I want to be that kind of doctor. The kind who shows up with water.']],
   andkhoy: [[3, 'My cousins are at the well. They say Bulbul is too old for this road. Bulbul heard them.', 'Bulbul now plans to live forever, out of spite.']],
   balkh: [[4, 'Rumi was born here. He wrote that the reed flute cries because it was cut from the reed bed and wants to go home. That is everyone in this caravan. We are all reed flutes. Mostly we complain about the goat.']],
-  bukhara: [[4, 'Fourteen cousins! It was fourteen after all. They all want to be in my book. I have given each one a sentence. My aunt has demanded a second sentence.']],
+  bukhara: [[4, 'The dyers in the Jewish quarter have blue hands up to the elbow, from the indigo. One of them sang me a song in Persian with Hebrew words in it, the way my grandmother used to. I wrote down every word.']],
   irongates: [['guest', 'NINO!', 'Davit shouts his sister’s name into the canyon, and the cliffs shout it back eleven times. “She is closer now,” he says. “I can feel it.”']],
   kesh: [[2, 'I know this road! That tree! I fell out of that tree! Samarkand is right there! Right THERE!', 'Nobody can make him walk at a normal speed for the rest of the day.']],
   rabat: [[2, 'I know this place! I was sick in that corner! Samarkand is right there! Right THERE!', 'Nobody can make him walk at a normal speed for the rest of the day.']],
