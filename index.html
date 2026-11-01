@@ -535,7 +535,7 @@ const N = {
     hist: 'The Mongol ruler Öljeitü built Sultaniyya from scratch around 1305 as the new capital of the Ilkhanate. The dome of his tomb, about fifty meters high, is one of the largest brick domes ever raised. He is said to have meant it for the bones of Ali and Husayn, the most revered figures of Shia Islam. That plan fell through, and he ended up in it himself in 1316. The Castilian ambassador Clavijo passed through in 1404 and called it a great trading city, full of silk from Gilan and spices from India.',
     food: ['dried mulberries', 'You buy a paper cone of dried mulberries. They are chewy and taste like a summer that already happened.', 2],
     talk: [['A spice seller named Bahodir', 'The pepper comes from India by way of Hormuz. I have never seen India. I have never seen Hormuz. I have seen a great deal of pepper.', 'Pepper comes by ship from Malabar to Hormuz, then by camel to Shiraz, then here. Every hand it passes through adds a little to the price. By Samarkand, a sack of pepper costs as much as a good coat. Buy here, sell east, and you will see what I mean.'],
-      ['A girl selling dried mulberries', 'The dome is very big. People come to look at it, and then they buy mulberries. That is how it works.', 'If you count the minarets and get eight, you get good luck. Nobody ever gets eight. I got seven, twice.'],
+      ['A girl selling dried mulberries', 'The dome is very big. People come to look at it, and then they buy mulberries. That is how it works.', 'My brother Bahrom cuts tiles in Samarkand. Timur’s men took him with the builders two years ago. I paid a scribe to write him a letter. Nobody going east will take it. Will you?', { quest: 'letter', label: 'Carry her letter to Samarkand', done: 'She presses the letter into your hands, then a paper cone of mulberries, then a second one for the goat.' }],
       ['A Genoese merchant', 'In my city a building like that would take a hundred years of arguing. Here the khan said build it, so they built it.', 'In Genoa we say: wherever there is money, there is a Genoese. I have been to Caffa, Trebizond and Tabriz. Next year, Samarkand. My mother thinks I am in Pisa.']],
     road: ['A muleteer', 'East of here is Tehran, then the Damghan road. There are towers near Damghan you will not forget. I have tried.'] },
   ray: { name: 'Tehran', kind: 'town', region: 'plateau', xy: [82, 146], store: 1.3,
@@ -580,6 +580,7 @@ const N = {
     sights: ['shrine'],
     talk: [['A horse trader', 'Two roads from here. The ambassador’s road goes by Balkh and the Iron Gates. Long, with mountains. The other goes by Merv and Bukhara. Shorter, and the Karakum will try to kill you. I sell horses for both.'],
       ['A pilgrim from Herat', 'I walked here barefoot. I am riding home. I have done enough walking for the next life too.'],
+      ['An old woman from Herat', 'Twenty-three years ago Timur took Herat, and he took the craftsmen to Samarkand. My son Hasan blows glass. Blew. Blows.', 'Every winter I knit Hasan a scarf, in case someone is going east. This is the twenty-third. Samarkand is hot, I know. Take it anyway.', { quest: 'scarf', label: 'Take the scarf to Hasan', done: 'She folds it twice and ties it with a blue thread, so you will know it is the right one.' }],
       ['A scholar', 'Merv was the greatest city in the world once. Then the Mongols came. It is a good place to think about things, if you have water.', 'legend:6']],
     road: ['A horse trader', 'The southern road has the Iron Gates, and above them, if the shepherds are to be believed, the nest of the Simurgh. The northern road has Bukhara, and Bukhara has the best plov in the world. Choose with your stomach.'] },
   murghab: { name: 'the Murghab River', label: 'Murghab', kind: 'river', region: 'desert', xy: [198, 140],
@@ -1298,6 +1299,14 @@ const EVENTS = [
   { w: () => camelIdx('Bulbul') >= 0 ? 1.2 : 0, run: () => { alive().forEach(m => m.hp = Math.max(1, m.hp - 2)); return msg('Bulbul groans all night, with great feeling. Nobody sleeps. In the morning she looks very refreshed.', { who: 'c0', emo: 'note' }); } },
   { w: () => has('otabek') ? 1.4 : 0, run: () => { alive().forEach(m => m.hp = Math.min(100, m.hp + 3)); return msg('After supper Otabek plays the dutar, two strings and a hundred songs. Even Sultan the camel stops chewing to listen.', { who: 'p2', emo: 'note' }); } },
   { w: () => 3, run: () => banterEvent() },
+  { w: () => !S.flags.nowruz && S.day >= dayOf(2, 16) && S.day <= dayOf(3, 6) ? 60 : 0, run: () => { S.flags.nowruz = true; alive().forEach(m => m.hp = Math.min(100, m.hp + 6)); S.food += 15; return msg('It is Nowruz, the new year, the first day of spring. In the village by the road, the women have stirred a giant pot of sumalak, sprouted-wheat pudding, all night long, singing to keep each other awake. Children jump over little bonfires. Every house sets out green sprouts, eggs, apples and a coin. You are handed a bowl of sumalak and told to make a wish while you eat it. <span class="good">Everyone gains 6 health. +15 lb food.</span>', { title: 'Nowruz!', sound: 'fanfare', who: 'goat', emo: 'heart' }); } },
+  { w: c => !S.flags.harvest && [8, 9].includes(c.month) && c.region !== 'desert' && c.region !== 'mountain' ? 4 : 0, run: () => { S.flags.harvest = true; return { type: 'choice', title: 'The grape harvest', who: 'p0', emo: 'heart', text: 'It is harvest time. Villagers are treading grapes in stone vats, boiling the juice down into thick, dark syrup, and spreading raisins on every flat roof. Someone hands you a basket.', options: [
+      { label: 'Help with the harvest', sub: 'lose a day · get paid in raisins', run: () => { loseDays(1); S.food += 50; alive().forEach(m => m.hp = Math.min(100, m.hp + 4)); return msg(`You pick grapes until your hands are purple. ${has('otabek') ? 'Otabek treads the vats in time to his own drumming.' : 'The goat eats more than it picks.'} That night there is music and grape syrup on everything. <span class="good">+50 lb food, +4 health.</span>`); } },
+      { label: 'Buy a sack of raisins', sub: money(4), disabled: S.money < 4, run: () => { S.money -= 4; S.food += 30; return msg('A sack of raisins, still warm from the roof. <span class="good">+30 lb food.</span>'); } },
+      { label: 'Keep going', run: () => msg('You wave and keep going. Your camels look back at the grapes for a long time.') } ] }; } },
+  { w: c => !(S.quests && S.quests.falcon) && !S.flags.falconSeen && S.traveled > 120 && c.region !== 'desert' ? 1.4 : 0, run: () => { S.flags.falconSeen = true; return { type: 'choice', title: 'A falcon', who: 'c0', emo: '!', text: 'A hooded falcon with a little silver bell lands on Bulbul’s pack and refuses to leave. The bell is engraved with a castle and a lion. Somewhere ahead, the King of Castile’s ambassador is missing a falcon.', options: [
+      { label: 'Coax it down with some meat', sub: 'uses 5 lb of food', disabled: S.food < 5, run: () => { S.food -= 5; (S.quests || (S.quests = {})).falcon = true; save(); return msg(`The falcon eats from your glove and settles on your shoulder like it has always lived there. The goat is furious. <span class="good">New errand: ${QUESTS.falcon}</span>`, { sound: 'sparkle', who: 'goat', emo: '!' }); } },
+      { label: 'Shoo it away', run: () => msg('The falcon leaves, with dignity, and one of your apricots.') } ] }; } },
   { w: c => !S.flags.armenians && c.region === 'plateau' ? 1.8 : 0, run: () => { S.flags.armenians = true; S.food += 20; alive().forEach(m => m.hp = Math.min(100, m.hp + 5)); return msg(`A band of Armenian pilgrims passes, singing sharakan, the old hymns, in harmonies that seem to come out of the hills. ${has('anahit') ? 'Anahit walks with them for an hour, singing the low part, and comes back with lavash and a blessing from a priest who knew her teacher at Tatev.' : 'They give you lavash, thin bread baked on hot stones, and a blessing.'} <span class="good">Everyone gains 5 health. +20 lb food.</span>`, { title: 'Pilgrims', who: 'p1', emo: 'note' }); } },
   { w: c => !S.flags.multani && (c.region === 'khorasan' || c.region === 'desert') ? 1.6 : 0, run: () => { S.flags.multani = true; return { type: 'choice', title: 'Merchants from Multan', who: 'p0', emo: 'sparkle', text: 'A caravan from Multan, on the Indus, is heading for Samarkand too: bales of indigo, cotton cloth, and a Hindu caravan master in a white turban who has done this trip nineteen times. He says your Kalila and Dimna stories came from India first, from a book called the Panchatantra.', options: [
       { label: 'Ask for a Panchatantra story', run: () => legendItem(LEGENDS.find(L => L.t === 'The monkey and the crocodile'), 'He settles by the fire and tells it with his hands.') },
@@ -1731,7 +1740,7 @@ let travelling = false, dayAcc = 0, lastTs = 0;
 function setScene(mode, o = {}) { const keepScroll = scene.scroll || 0; scene = Object.assign({ mode, t: 0, moving: false, scroll: keepScroll }, o); EMOTES.list = []; EMOTES.next = 2.5; if (mode !== 'walk') AMB.list = []; }
 function ridge(wx, base, amp, s) { return base - amp * (0.5 + 0.3 * Math.sin(wx * 0.031 + s) + 0.2 * Math.sin(wx * 0.083 + s * 1.7)); }
 function curRegion() { if (scene.region) return scene.region; if (!S) return 'plateau'; if (S.atNode) return N[S.segFrom].region; const e = edgeOf(S.segFrom); return e ? e.region : 'plateau'; }
-function poplarG(x, by, h) { R(P.woodD, x + 1, by - 3, 1, 3); R(P.leaf, x, by - h, 3, h - 3); R(P.leaf, x + 1, by - h - 2, 1, 2); R(P.leafL, x, by - h + 2, 1, h - 6); }
+function poplarG(x, by, h) { const au = S && [8, 9, 10].includes(monthOf(S.day)), c = au ? '#F2B530' : P.leaf, cl = au ? '#FFE07A' : P.leafL; R(P.woodD, x + 1, by - 3, 1, 3); R(c, x, by - h, 3, h - 3); R(c, x + 1, by - h - 2, 1, 2); R(cl, x, by - h + 2, 1, h - 6); }
 function drawBackground(region, w, scroll, hz = 112) {
   const p = REG[region], t = scene.t;
   sky(w && w.precip ? SKYW[w.precip] : (w && w.temp === 5 ? SKYW.scorch : p.sky), hz);
@@ -2268,7 +2277,7 @@ function suppliesScreen() {
     <dt>Food</dt><dd>${Math.floor(S.food)} lb</dd><dt>Water skins</dt><dd>${S.skins} (${S.water.toFixed(1)} full)</dd><dt>Felt coats</dt><dd>${S.coats}</dd><dt>Arrows</dt><dd>${S.arrows}</dd>
     <dt>Packsaddles</dt><dd>${S.saddles} spare</dd><dt>Travel letter</dt><dd>${S.letter === 'forged' ? 'yes (Yaqub’s)' : S.letter ? 'yes' : '<span class="warn">no</span>'}</dd>
     <dt>Purse</dt><dd>${money(S.money)}</dd>${goods.length ? `<dt>Goods</dt><dd>${listJoin(goods)}</dd>` : ''}${S.items.rue || S.items.bead || S.items.tiryaq ? `<dt>Charms</dt><dd>${listJoin([S.items.rue ? plural(S.items.rue, 'pouch', 'pouches') + ' of wild rue' : '', S.items.bead ? plural(S.items.bead, 'blue bead') : '', S.items.tiryaq ? plural(S.items.tiryaq, 'jar') + ' of theriac' : ''].filter(Boolean))}<br><span class="dim small">Burn rue when someone catches the evil eye. The bead keeps it away.</span></dd>` : ''}
-    ${S.receipts ? `<dt>Receipts</dt><dd>${S.receipts}, from Timur’s officers</dd>` : ''}<dt>Goat</dt><dd>1 (doing great)</dd></dl>
+    ${S.receipts ? `<dt>Receipts</dt><dd>${S.receipts}, from Timur’s officers</dd>` : ''}<dt>Goat</dt><dd>1 (doing great)</dd>${Object.keys(S.quests || {}).length ? `<dt>Errands</dt><dd>${Object.keys(S.quests).map(k => QUESTS[k]).join('<br>')}</dd>` : ''}</dl>
     <h2>Gifts for Timur</h2>${wonders ? `<div class="wonders">${wonders}</div>` : '<p class="dim">Nothing yet. Keep your eyes open.</p>'}
     <h2>Your crew</h2><div class="roster">${party}</div>
     <h2>Your camels</h2><div class="roster">${S.herd.length ? S.herd.map(c => `<div class="mem">${camelImg(c)}<div class="n">${esc(c.name)}<span class="bio">${c.bio}</span></div></div>`).join('') : '<p class="dim">No camels.</p>'}</div>`,
@@ -2375,6 +2384,8 @@ function talkMore(i) {
   if (more.startsWith('legend:')) { const L = LEGENDS[+more.slice(7)]; S.heard[L.t] = true; S.legends = Object.keys(S.heard).length; if (L.flag) S.flags[L.flag] = true; return sayScreen({ who: person, line: L.s, node: S.segFrom, before: `<h3>${L.t}</h3>`, buttons: [{ label: 'Thank them', primary: true, onClick: () => talkScreen() }] }); }
   if (extra && extra.flag) S.flags[extra.flag] = true;
   const b = [];
+  const QS = S.quests || (S.quests = {});
+  if (extra && extra.quest && !QS[extra.quest]) b.push({ label: extra.label, sub: 'an errand for Samarkand', primary: true, onClick: () => { QS[extra.quest] = true; save(); runQueue([msg(`${extra.done}<br><br><span class="good">New errand: ${QUESTS[extra.quest]}</span>`, { sound: 'sparkle', date: false })], () => talkScreen(i)); } });
   if (extra && extra.wonder && !S.wonders[extra.wonder]) b.push({ label: extra.label, sub: money(extra.cost) + ` · you have ${money(S.money)}`, primary: true, disabled: S.money < extra.cost, onClick: () => { S.money -= extra.cost; runQueue([getWonder(extra.wonder, `${person} wraps it up for you with great care.`)], () => talkScreen(i)); } });
   b.push({ label: 'Talk to someone else', onClick: () => talkScreen() });
   b.push({ label: 'Goodbye', onClick: () => { setScene('node', { node: S.segFrom }); menuScreen(); } });
@@ -2444,6 +2455,7 @@ function arriveAt(id) {
   if (N[id].kind === 'river') return riverArrive(id);
   const pre = [];
   if (S.flags.shrineCure && N[id].kind === 'town') { const m = S.party.find(p => p.name === S.flags.shrineCure && p.alive); S.flags.shrineCure = null; if (m && m.sick) pre.push(cureMsg(m, 'At the town shrine, {n} sits by the tomb for an hour and comes out yawning. The jinn has gone.')); }
+  if (id === 'irongates' && monthOf(S.day) >= 10) pre.push(snowedIn());
   if (id === 'nishapur' && S.army) { S.army = false; pre.push(msg('Near Nishapur the army turns off toward its summer pastures. An officer tells you the road ahead is all yours. You’re not sure he meant it kindly.', { scene: { mode: 'node', node: id } })); }
   pre.push(...beatsFor(id));
   if (pre.length) return runQueue(pre, () => landmarkScreen(id));
@@ -2515,6 +2527,8 @@ function riverScreen(id) {
     if (S.letter !== true) opts.push({ label: 'Bribe the ferryman to forget about the letter', sub: money(60), disabled: S.money < 60, onClick: () => bribe(id) });
     opts.push({ label: 'Float across on sheepskins', sub: S.letter ? 'in broad daylight' : 'at night, very quietly', onClick: () => raftGame({ night: !S.letter, onDone: items => crossDone(items) }) });
   }
+  if (!S.flags['fish' + id]) opts.push({ label: 'Fish for supper', sub: 'free · takes the evening', onClick: () => { S.flags['fish' + id] = true; const f = ri(10, 40); S.food += f; runQueue([msg(`${pick(['You catch a catfish with whiskers like a mullah.', 'You catch three small fish and one very large opinion from a local about your technique.', 'The fish here are as big as your leg. You catch a small one, which is fine.'])} <span class="good">+${f} lb food.</span>`, { sound: 'good', who: 'goat', emo: 'melon' })], () => riverScreen(id)); } });
+  if (RSIGHT[id] && !S.flags['rs' + id]) opts.push({ label: RSIGHT[id][0], sub: 'a little history', onClick: () => { S.flags['rs' + id] = true; alive().forEach(m => m.hp = Math.min(100, m.hp + 3)); runQueue([msg(RSIGHT[id][1] + ' <span class="good">Everyone gains 3 health.</span>', { title: RSIGHT[id][2] })], () => riverScreen(id)); } });
   opts.push({ label: 'Wait a day and see', onClick: () => { loseDays(1); S.weather = rollWeather(nd.region); rs.depth = Math.max(0.5, rs.depth + rnd(-0.35, 0.25)); riverScreen(id); } });
   opts.push({ label: 'Ask the locals', onClick: () => { const [w, line, aside] = nd.local[rs.localIdx++ % nd.local.length]; sayScreen({ who: w, line, aside, node: id, next: () => riverScreen(id) }); } });
   screen(info, opts, { hud: hudLine() });
@@ -2836,6 +2850,7 @@ function reunions(then) {
   const MOM = { robe: '#FF6B4A', trim: '#FFF3A6', hat: 'scarf', hatc: '#FFFFFF', skin: 2 }, NINO = { robe: '#E2505F', trim: '#FFFFFF', hat: 'scarf', hatc: '#14B8A6', skin: 0 };
   if (has('otabek')) items.push(msg(`Otabek drops his bag in the middle of the street and runs. A woman in a doorway near the bazaar screams his name.${S.flags.otRing ? ' He gives her the tiny turquoise ring. It fits.' : ''} Then comes the drum solo. It is very long, and nobody minds.`, { title: 'Otabek is home', sound: 'sparkle', date: false, scene: { mode: 'reunion', a: LOOKS[2], b: MOM, prop: S.flags.otRing ? 'ring' : 'drum' } }));
   if (S.guest) { S.flags.reunited = true; items.push(msg(`At the half-built mosque, Davit walks along the rows of tile cutters calling a name. Halfway down, a girl drops her chisel.${S.flags.bird ? ' He gives her the wooden bird he carved on the road. She sets it on her workbench, where it will watch her cut tiles for years.' : ''} Nobody gets any work done for the rest of the afternoon.`, { title: 'Davit finds Nino', sound: 'sparkle', date: false, scene: { mode: 'reunion', a: GLOOK, b: NINO, prop: S.flags.bird ? 'bird' : null } })); }
+  items.push(...questEndings());
   if (has('anahit')) items.push({ type: 'say', who: 'Anahit', look: LOOKS[1], node: 'samarkand', mode: 'talk', line: 'There is a hospital here that treats fevers with sherbet and sadness with music. They have offered me a place. My teacher at Tatev is going to hate this. I am going to write him a very long letter.' });
   if (has('aybike')) items.push({ type: 'say', who: 'Aybike', look: LOOKS[3], node: 'samarkand', mode: 'talk', line: 'I have seen the biggest city in the world. It is too big. Tomorrow I am buying four camels and going home to the Karakum.', aside: 'At the city gate she turns around. “Bring the goat to visit,” she says. “The camels will ask.”' });
   if (has('yaqub')) items.push({ type: 'say', who: 'Yaqub', look: LOOKS[4], node: 'samarkand', mode: 'talk', line: 'My book is finished. I have called it The Samarkand Trail. There is a chapter about each of you. The longest chapter is about the goat.', aside: 'That night he reads the first chapter aloud in the bazaar. A storyteller with one enormous eyebrow asks to borrow it.' });
@@ -2860,6 +2875,7 @@ function scoreScreen(feast, gift) {
   const add = (label, pts) => { rows.push([label, pts]); total += pts; };
   S.party.filter(m => m.alive).forEach(m => add(`${esc(m.name)} <span class="dim small">· ${healthLabel(m.hp)} health</span>`, m.hp > 70 ? 500 : m.hp > 50 ? 400 : m.hp > 30 ? 300 : 200));
   if (S.flags.reunited) add('Davit and Nino, together again', 500);
+  Object.keys(S.quests || {}).filter(k => S.flags['done_' + k]).forEach(k => add(`Errand done: ${QUESTS[k]}`, 150));
   add(plural(S.camels, 'camel'), S.camels * 4);
   add(plural(S.saddles, 'spare packsaddle'), S.saddles * 2);
   add(plural(S.skins, 'water skin'), S.skins);
@@ -3368,6 +3384,36 @@ function barkTick(dt) {
   bark.el.textContent = plainq(line); bark.el.hidden = false; bark.t = 3.4;
   try { SND.blip(bark.k === 'goat' ? 'goat' : i === 'guest' ? 'guest' : LOOKS[i].voice, 60 + line.length, line.includes('?'), 4); } catch (e) {}
 }
+
+
+/* ---------- v7: errands, seasons, rivers, Andkhoy ---------- */
+const QUESTS = { letter: 'carry a letter to Bahrom, a tile cutter in Samarkand', scarf: 'bring a scarf to Hasan, a glassblower in Samarkand', falcon: 'return the King of Castile’s falcon to his ambassador' };
+function questEndings() {
+  const Q = S.quests || {}, out = [];
+  if (Q.letter) { S.flags.done_letter = true; S.money += 40; out.push(msg(`At the tile workshops you ask for Bahrom. He reads his sister’s letter three times, laughs at the part about the minarets, and gives you forty tangas he has been saving for a reason he can’t remember.${S.guest ? ' He works on the same scaffold as Nino. Of course he does.' : ''} <span class="good">Errand done. +40 tangas.</span>`, { title: 'A letter from Sultaniyya', sound: 'sparkle', date: false })); }
+  if (Q.scarf) { S.flags.done_scarf = true; out.push(msg('In the glassblowers’ street, beside a furnace so hot the air wobbles, you find Hasan. He sees the blue thread and knows at once. He wraps the scarf around his neck, in that heat, and does not take it off. Then he blows you a tiny glass goat. It is very accurate. <span class="good">Errand done.</span>', { title: 'A scarf from Herat', sound: 'sparkle', date: false })); }
+  if (Q.falcon) { S.flags.done_falcon = true; out.push(msg('You find the Castilian ambassadors at the edge of the feast, looking miserable. Clavijo sees the falcon and nearly faints. He writes a long paragraph about you in his book, misspells your name, and gives you a Castilian gold coin. The falcon looks relieved. The goat looks relieved. <span class="good">Errand done.</span>', { title: 'The King’s falcon', sound: 'fanfare', date: false })); }
+  return out;
+}
+function snowedIn() {
+  return { type: 'choice', title: 'Snow in the pass', who: 'p0', emo: 'sweat', sound: 'bad', text: 'Winter has come early to the Iron Gates. Snow fills the canyon to a camel’s knees, and the wind comes through it like it is late for something.', options: [
+    { label: 'Wait for a thaw', sub: 'lose 3 days', run: () => { loseDays(3); return msg('You shelter in a shepherd’s hut for three days, eating his dried apricots and listening to his opinions. Then the sun comes out and the snow slumps.'); } },
+    { label: 'Push through', sub: S.coats >= alive().length ? 'everyone has a felt coat' : 'not everyone has a coat · frostbite likely', run: () => { const cold = alive().filter((m, i) => i >= S.coats); alive().forEach(m => m.hp = Math.max(1, m.hp - (cold.includes(m) ? 14 : 5))); const v = cold.find(m => !m.sick); if (v) v.sick = 'frost'; return msg(`You push through, single file, holding the camels’ tails.${cold.length ? ` ${listJoin(cold.map(m => who(m)))} ${cold.length > 1 ? 'have' : 'has'} no coat and ${cold.length > 1 ? 'suffer' : 'suffers'} badly.` : ' The felt coats earn their keep.'}`, { sound: 'bad' }); } } ] };
+}
+const RSIGHT = {
+  termez: ['Climb to the old stupa', 'On a hill outside Termez stands a crumbling brick tower, a Buddhist stupa from the days when this was a land of monasteries, centuries before Islam came. Xuanzang counted a dozen monasteries here. Now shepherds use it for shade, and swallows nest in the cracks.', 'The stupa'],
+  amul: ['Watch the melon boats', 'Boats piled with Khwarazm melons drift down the Oxus. The old caliphs of Baghdad loved these melons so much they had them shipped across the empire packed in snow, inside lead boxes. The boatmen throw you a small one for luck.', 'Melon boats'],
+  qizil: ['Watch the women dyeing wool', 'On the gravel bars, women rinse skeins of wool in the red river: madder red, indigo blue and saffron yellow, laid out on the stones like a carpet before it is a carpet.', 'The dyers'],
+  murghab: ['Visit the felt makers', 'Turkmen families are making felt by the river: they lay out sheep wool, sprinkle it with hot water, roll it up in a reed mat and kick it back and forth for hours, singing. Aybike joins in without asking.', 'Felt'],
+  tejen: ['Listen to the shepherd’s flute', 'An old shepherd sits on the bank playing a long cane flute. He says the river taught him the tune. The river seems to be listening.', 'The flute'],
+};
+N.andkhoy.hist = 'Andkhoy sits where the desert road from Merv and Mashhad meets the oasis road to Balkh, so it has always lived on travelers. Its herders are Turkmen, and its camel market is famous: two-humped Bactrian camels from the cold north meet one-humped dromedaries from the hot south, and their calves, the nars, are the strongest camels on the road.';
+SHOWS.andkhoy = { kind: 'camels', label: 'Visit the camel market', title: 'The camel market', hp: 3, text: 'At the camel market, herders parade their animals while an auctioneer sings the prices. You don’t understand a word, but you understand that the camels are expensive. A baby camel follows the goat around all afternoon. The goat allows it.' };
+SHOWDRAW.camels = t => {
+  for (let k = 0; k < 3; k++) { const x = ((t * 18 + k * 115) % 345) - 60; C2(x, 150, Math.floor(t * 4 + k) % 2, k, null, t, k); }
+  P2(184, 158, 0, { robe: P.coral, trim: P.yellow, hat: 'fur', skin: 2, beard: '#3B2A4A' });
+  if (Math.floor(t * 2) % 2) twinkle(196, 128, t, 2);
+};
 
 /* ---------- boot ---------- */
 window.__trail = { buzk: () => buzkGame({ onDone: items => runQueue(items, menuScreen) }), show: (k, id) => { setScene('show', { kind: k, node: id || S.segFrom }); }, fire: () => setScene('fire'), reunion: () => setScene('reunion', { a: LOOKS[2], b: GLOOK, prop: 'ring' }), state: () => S, setDay: ms => { DAY_MS = ms; }, scene: () => scene, hunt: () => hunt, raft: () => raft, huntEnd, raftEnd, jump: id => { travelling = false; arriveAt(id); }, raftTest: night => raftGame({ night, onDone: items => crossDone(items) }), emote, cue: n => { forcedCue = n; }, snd: SND, amb: t => ambSpawnType(t), haggle: () => haggleGame(S.segFrom, m => storeScreen(S.segFrom, menuScreen, m)) };
