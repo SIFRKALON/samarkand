@@ -451,7 +451,7 @@ const OCC = {
   herder: { label: 'A goat herder from the Yaghnob valley', sub: '400 tangas · camels stay healthier · score ×3', money: 400, mult: 3 },
 };
 /* your motley crew. index 0 is the player. */
-const CREW = [
+let CREW = [
   { name: '', from: 'Leader', role: 'You', bio: 'A first-time caravan leader with a borrowed map and a great deal of confidence.', skill: 'Makes the decisions' },
   { name: 'Anahit', from: 'Armenian · from Tatev', role: 'Healer’s apprentice', bio: 'Learned medicine from the monks of Tatev and has opinions about everyone’s liver. Her tonics work. They also taste like a boot.', skill: 'Better at curing the sick',
     lines: { plateau: 'Drink from the springs, not the ditches. I am not going to say it twice. I am going to say it about forty more times.', khorasan: 'Nishapur had famous doctors once. I want to see what is left of their books.', desert: 'Cover your heads. The sun here goes straight for the brain, and some of you cannot spare much.', mountain: 'Cold air is good for the lungs and bad for everything else.', oasis: 'In Samarkand there is a hospital where they treat sadness with music. Otabek thinks it is for him.', goal: 'My teacher at Tatev said I was too impatient for medicine. I am going to Samarkand to prove him wrong. Quickly.' } },
@@ -462,7 +462,7 @@ const CREW = [
   { name: 'Yaqub', from: 'Persian Jew · from Tabriz', role: 'Scribe and poet', bio: 'Writes letters for people who can’t, in five languages. Knows four hundred lines of Shahin’s Book of Moses, a Persian epic written in Hebrew letters, and recites them whether or not anyone asks. Is secretly writing a book about this trip.', skill: 'Reads verse by the fire: everyone recovers faster when resting',
     lines: { plateau: 'Every village on this road talks a little differently. Persian in the bazaar, Turkish with the horses, Armenian at the well. The camels speak only complaint.', khorasan: 'My grandfather read us Attar’s Conference of the Birds with a different voice for every bird. His hoopoe was magnificent. His sparrow was mostly him complaining about his knees.', desert: 'I have written poems in five languages, and none of them has a word for this much sand.', mountain: 'In Shahin’s book, Moses goes up the mountain alone and comes back with the law. I went up this one and came back with a cold.', oasis: 'Shahin of Shiraz wrote the story of Moses as a Persian epic, in Hebrew letters. Pharaoh gets the best insults. Ask me for one. Please. Anyone.', goal: 'I am writing a book about this journey. So far it is mostly about the goat.' } },
 ];
-const GUEST = { name: 'Davit', from: 'Georgian · from Tbilisi', bio: 'Taken in Timur’s raids on Georgia. His sister Nino was carried off to Samarkand to cut tiles for Timur’s mosque. He is going to find her.' };
+let GUEST = { name: 'Davit', from: 'Georgian · from Tbilisi', bio: 'Taken in Timur’s raids on Georgia. His sister Nino was carried off to Samarkand to cut tiles for Timur’s mosque. He is going to find her.' };
 const CAMEL_POOL = [
   { name: 'Bulbul', fur: 0, bio: 'Named after the nightingale, because she groans all night, with great feeling.' },
   { name: 'Sultan', fur: 2, bio: 'Thinks he is in charge. Bites anyone who suggests otherwise.' },
@@ -751,6 +751,7 @@ function newGame(occ) {
     visited: ['tabriz'], talkIdx: {}, heard: {}, seenGraves: [], flags: {}, thirstDays: 0, river: null,
     goods: {}, wonders: {}, items: {}, guest: null, boilDays: 0, nightDays: 0, curse: 0, legends: 0,
   };
+  setRoad('T');
 }
 
 
@@ -783,7 +784,7 @@ function typeEl(el, voice, onDone) {
 }
 function screen(html, buttons, opts = {}) {
   stopTyping();
-  textEl.innerHTML = qfix(html);
+  textEl.innerHTML = qfix(subNames(html));
   choicesEl.innerHTML = '';
   choicesEl.classList.remove('wait');
   const numbered = buttons.length > 1;
@@ -795,7 +796,7 @@ function screen(html, buttons, opts = {}) {
     if (b.disabled) el.disabled = true;
     const k = numbered ? String(i + 1) : '';
     el.dataset.key = k;
-    el.innerHTML = qfix((k ? `<span class="k" aria-hidden="true">${k}</span>` : '') + `<span class="lb">${b.label}${b.sub ? `<span class="sub">${b.sub}</span>` : ''}</span>`);
+    el.innerHTML = qfix(subNames((k ? `<span class="k" aria-hidden="true">${k}</span>` : '') + `<span class="lb">${b.label}${b.sub ? `<span class="sub">${b.sub}</span>` : ''}</span>`));
     el.addEventListener('click', () => { sfx.click(); b.onClick(el); });
     choicesEl.appendChild(el);
   });
@@ -1187,7 +1188,7 @@ function ghulEvent() {
 }
 function westCaravanEvent() {
   const R = N[S.segFrom] && N[S.segFrom].road; const L = unheard()[0];
-  return { type: 'choice', title: 'Travelers going west', who: 'p0', emo: 'sparkle', text: 'A caravan heading west to Tabriz stops beside yours. Their camels and your camels inspect each other. Everyone else swaps news.', options: [
+  return { type: 'choice', title: 'Travelers going west', who: 'p0', emo: 'sparkle', text: 'A caravan heading west stops beside yours. Their camels and your camels inspect each other. Everyone else swaps news.', options: [
     { label: 'Swap news and stories', run: () => L ? legendItem(L, 'Their caravan master tells you a story from farther east.') : msg('They tell you the road ahead is long and the melons are excellent. Both turn out to be true.') },
     { label: 'Trade with them', run: () => ({ type: 'fn', fn: next => tradeScreen(next, true) }) },
     { label: 'Wave and keep going', run: () => msg('You wave. They wave. A camel spits. Everyone moves on.') },
@@ -1205,7 +1206,7 @@ const BANTER = [
   [4, 'Yaqub recites Shahin’s Book of Moses by the fire, the part where the sea parts. Sultan the camel watches him the whole time, as if waiting for the sea.'],
 ];
 function banterEvent() {
-  const opts = BANTER.filter(([i]) => crewAlive(i)); if (!opts.length) return null;
+  const opts = (S.road === 'D' ? BANTER.filter(([i]) => i !== 4).concat(BANTER_D.map(l => [4, l])) : BANTER).filter(([i]) => crewAlive(i)); if (!opts.length) return null;
   const [i, line] = pick(opts);
   return msg(line === 'fact' ? `Aybike says: “${pick(CAMEL_FACTS)}”` : line, { who: 'p' + i, emo: pick(['heart', 'note', 'sparkle']) });
 }
@@ -1299,7 +1300,7 @@ const EVENTS = [
   { w: () => camelIdx('Bulbul') >= 0 ? 1.2 : 0, run: () => { alive().forEach(m => m.hp = Math.max(1, m.hp - 2)); return msg('Bulbul groans all night, with great feeling. Nobody sleeps. In the morning she looks very refreshed.', { who: 'c0', emo: 'note' }); } },
   { w: () => has('otabek') ? 1.4 : 0, run: () => { alive().forEach(m => m.hp = Math.min(100, m.hp + 3)); return msg('After supper Otabek plays the dutar, two strings and a hundred songs. Even Sultan the camel stops chewing to listen.', { who: 'p2', emo: 'note' }); } },
   { w: () => 3, run: () => banterEvent() },
-  { w: () => !S.flags.nowruz && S.day >= dayOf(2, 16) && S.day <= dayOf(3, 6) ? 60 : 0, run: () => { S.flags.nowruz = true; alive().forEach(m => m.hp = Math.min(100, m.hp + 6)); S.food += 15; return msg('It is Nowruz, the new year, the first day of spring. In the village by the road, the women have stirred a giant pot of sumalak, sprouted-wheat pudding, all night long, singing to keep each other awake. Children jump over little bonfires. Every house sets out green sprouts, eggs, apples and a coin. You are handed a bowl of sumalak and told to make a wish while you eat it. <span class="good">Everyone gains 6 health. +15 lb food.</span>', { title: 'Nowruz!', sound: 'fanfare', who: 'goat', emo: 'heart' }); } },
+  { w: () => !S.flags.nowruz && S.road !== 'D' && S.day >= dayOf(2, 16) && S.day <= dayOf(3, 6) ? 60 : 0, run: () => { S.flags.nowruz = true; alive().forEach(m => m.hp = Math.min(100, m.hp + 6)); S.food += 15; return msg('It is Nowruz, the new year, the first day of spring. In the village by the road, the women have stirred a giant pot of sumalak, sprouted-wheat pudding, all night long, singing to keep each other awake. Children jump over little bonfires. Every house sets out green sprouts, eggs, apples and a coin. You are handed a bowl of sumalak and told to make a wish while you eat it. <span class="good">Everyone gains 6 health. +15 lb food.</span>', { title: 'Nowruz!', sound: 'fanfare', who: 'goat', emo: 'heart' }); } },
   { w: c => !S.flags.harvest && [8, 9].includes(c.month) && c.region !== 'desert' && c.region !== 'mountain' ? 4 : 0, run: () => { S.flags.harvest = true; return { type: 'choice', title: 'The grape harvest', who: 'p0', emo: 'heart', text: 'It is harvest time. Villagers are treading grapes in stone vats, boiling the juice down into thick, dark syrup, and spreading raisins on every flat roof. Someone hands you a basket.', options: [
       { label: 'Help with the harvest', sub: 'lose a day · get paid in raisins', run: () => { loseDays(1); S.food += 50; alive().forEach(m => m.hp = Math.min(100, m.hp + 4)); return msg(`You pick grapes until your hands are purple. ${has('otabek') ? 'Otabek treads the vats in time to his own drumming.' : 'The goat eats more than it picks.'} That night there is music and grape syrup on everything. <span class="good">+50 lb food, +4 health.</span>`); } },
       { label: 'Buy a sack of raisins', sub: money(4), disabled: S.money < 4, run: () => { S.money -= 4; S.food += 30; return msg('A sack of raisins, still warm from the roof. <span class="good">+30 lb food.</span>'); } },
@@ -1340,7 +1341,7 @@ function graveCheck(prev, now) {
   return out;
 }
 function clavijoCheck() {
-  if (S.metClavijo || S.route === 'B' || S.atNode) return [];
+  if (S.metClavijo || S.route === 'B' || S.route === 'D' || S.atNode) return [];
   if (S.day < CLAVIJO[0][0] || S.day > CLAVIJO[CLAVIJO.length - 1][0]) return [];
   let pos = 0;
   for (let i = 0; i < CLAVIJO.length - 1; i++) {
@@ -1376,14 +1377,14 @@ const SKIN = ['#FFD9BC', '#F4B98F', '#DE9E6A', '#B97B4E'];
 const SKIND = ['#F2C2A2', '#E2A274', '#C4844F', '#9E643B'];
 const ROBES = ['#FF5FA8', '#14B8A6', '#FFB13B', '#3B5BD6', '#FF6B4A', '#8F7FE0', '#4CBF6B', '#1F7FD0'];
 const TRIMS = ['#FFE14A', '#FFFFFF', '#FFF3A6', '#C2F5EC', '#FFD6E8'];
-const LOOKS = [
+let LOOKS = [
   { robe: '#2F7FE0', trim: '#FFE14A', hat: 'turban', hatc: '#FFFFFF', skin: 1, voice: 'you' },
   { robe: '#FF5FA8', trim: '#FFFFFF', hat: 'scarf', hatc: '#14B8A6', skin: 0, voice: 'p1' },
   { robe: '#14B8A6', trim: '#FFE14A', hat: 'doppa', hatc: '#26275F', skin: 2, voice: 'p2' },
   { robe: '#FFB13B', trim: '#FF4FA3', hat: 'kalpak', hatc: '#FFFFFF', skin: 2, voice: 'p3' },
   { robe: '#8F7FE0', trim: '#FFF3A6', hat: 'turban', hatc: '#3B5BD6', skin: 1, beard: '#3B2A4A', voice: 'p4' },
 ];
-const GLOOK = { robe: '#E2505F', trim: '#FFFFFF', hat: 'hair', hatc: '#3B2A4A', skin: 0, voice: 'guest' };
+let GLOOK = { robe: '#E2505F', trim: '#FFFFFF', hat: 'hair', hatc: '#3B2A4A', skin: 0, voice: 'guest' };
 const MIRZA = { skin: 2, robe: '#14B8A6', trim: '#FFE14A', hat: 'turban', hatc: '#FFFFFF', mus: P.hair, voice: 'merchant' };
 const OLDMASTER = { skin: 1, robe: '#3B5BD6', trim: '#FFF3A6', hat: 'turban', hatc: '#FFF3A6', beard: '#F6F1EA', voice: 'elder' };
 
@@ -1846,7 +1847,7 @@ function drawNode() {
 }
 function duck(x, y, t, k) { const b = Math.floor(t * 2 + k) % 2; R(P.white, x, y + 1, 5, 2); R(P.white, x + 3, y - 1, 2, 2); px(P.saffron, x + 5, y); px(P.navy, x + 4, y - 1); px(P.blush, x + 4, y); R(P.waterL, x - 1, y + 3 - b, 7, 1); }
 function drawRiver() {
-  const nd = N[scene.node], region = nd.region, ox = !!nd.oxus, t = scene.t, p = REG[region];
+  const nd = N[scene.node], region = nd.region, ox = !!(nd.oxus || nd.big), t = scene.t, p = REG[region];
   drawBackground(region, S ? S.weather : null, scene.scroll, 70);
   const top = ox ? 76 : 82, bot = ox ? 136 : 130;
   R(p.ground[1], 0, top - 5, W, 5); for (let x = 3; x < W; x += 9) { R(P.leaf, x, top - 8, 1, 4); px(P.leafL, x + 1, top - 7); }
@@ -2035,7 +2036,7 @@ function titleScreen() {
   travelling = false; setScene('title');
   const saved = store.get(KEY.save, null);
   const hasSave = saved && saved.v === 3 && saved.party && saved.party.length && saved.party[0].alive;
-  const b = [{ label: 'Quick start', sub: 'name yourself and go. We pack for you.', primary: true, onClick: () => { sfx.title(); quickStart(); } }, { label: 'Start a new journey', sub: 'choose everything yourself', onClick: () => { sfx.title(); occupationScreen(); } }];
+  const b = [{ label: 'Quick start', sub: 'name yourself and go. We pack for you.', primary: true, onClick: () => { sfx.title(); quickStart(); } }, { label: 'The Delhi road', sub: 'new! a different crew and road to the same feast', onClick: () => { sfx.title(); quickStartD(); } }, { label: 'Start a new journey', sub: 'from Tabriz, choosing everything yourself', onClick: () => { sfx.title(); occupationScreen(); } }];
   if (hasSave) b.push({ label: `Continue ${esc(saved.party[0].name)}’s journey`, sub: `${dateStr(saved.day)} · ${saved.atNode ? 'at ' + esc(placeName(saved.segFrom)) : 'on the road'}`, onClick: () => { S = saved; resumeScreen(); } });
   b.push({ label: 'How to play', onClick: () => learnScreen(0) });
   b.push({ label: 'Top Ten travelers', onClick: () => topTenScreen() });
@@ -2199,7 +2200,7 @@ function statusHTML() {
     <dt>Food</dt><dd>${Math.floor(S.food)} lb${S.food <= 0 ? ' <span class="warn">· none left!</span>' : ''}</dd>
     <dt>Water</dt><dd>${S.skins ? `${S.water.toFixed(1)} of ${S.skins} skins` : '<span class="warn">no water skins</span>'}</dd>
     <dt>Next stop</dt><dd>${next ? `${esc(placeName(next))} · ${plural(rem, 'farsakh')}` : '—'}</dd>
-    <dt class="sr">Progress</dt><dd class="prog"><span>Tabriz</span><span class="bar"><i style="width:${pct}%"></i></span><span>Samarkand</span></dd></dl>`;
+    <dt class="sr">Progress</dt><dd class="prog"><span>${S.road === 'D' ? 'Delhi' : 'Tabriz'}</span><span class="bar"><i style="width:${pct}%"></i></span><span>Samarkand</span></dd></dl>`;
 }
 function travelScreen() {
   if (!leader().alive) return gameOver();
@@ -2294,7 +2295,7 @@ function chatScreen() {
     S.flags['chat' + i] = true;
     sayScreen({ who: m.name, look: LOOKS[i], node: S.atNode ? S.segFrom : null, line, buttons: [{ label: 'Talk to someone else', onClick: chatScreen }, { label: 'Done', primary: true, onClick: () => { setScene(S.atNode ? 'node' : 'walk', S.atNode ? { node: S.segFrom } : {}); menuScreen(); } }] });
   } }));
-  if (S.guest) opts.push({ label: 'Davit', sub: 'Georgian · looking for his sister', onClick: () => sayScreen({ who: 'Davit', look: GLOOK, line: pick(['Nino cuts tiles. She was always better with her hands than me. I was better at climbing trees. Not useful now.', 'Thank you. I keep saying it. I will keep saying it.', 'In Georgia we have mountains like these, but with more churches and fewer camels.']), buttons: [{ label: 'Talk to someone else', onClick: chatScreen }, { label: 'Done', primary: true, onClick: () => { setScene(S.atNode ? 'node' : 'walk', S.atNode ? { node: S.segFrom } : {}); menuScreen(); } }] }) });
+  if (S.guest) opts.push({ label: GUEST.name, sub: S.road === 'D' ? 'looking for his father' : 'Georgian · looking for his sister', onClick: () => sayScreen({ who: GUEST.name, look: GLOOK, line: S.road === 'D' ? pick(GOPAL_LINES) : pick(['Nino cuts tiles. She was always better with her hands than me. I was better at climbing trees. Not useful now.', 'Thank you. I keep saying it. I will keep saying it.', 'In Georgia we have mountains like these, but with more churches and fewer camels.']), buttons: [{ label: 'Talk to someone else', onClick: chatScreen }, { label: 'Done', primary: true, onClick: () => { setScene(S.atNode ? 'node' : 'walk', S.atNode ? { node: S.segFrom } : {}); menuScreen(); } }] }) });
   if (S.camels && has('aybike')) opts.push({ label: 'Ask Aybike about camels', onClick: () => sayScreen({ who: 'Aybike', look: LOOKS[3], line: pick(CAMEL_FACTS), buttons: [{ label: 'Talk to someone else', onClick: chatScreen }, { label: 'Done', primary: true, onClick: () => { setScene(S.atNode ? 'node' : 'walk', S.atNode ? { node: S.segFrom } : {}); menuScreen(); } }] }) });
   opts.push({ label: 'Never mind', onClick: menuScreen });
   screen(`<h2>Chat with the crew</h2><p>Who do you want to talk to?</p>`, opts, { hud: hudLine() });
@@ -2433,6 +2434,7 @@ function smoothPath(pts, close) {
   d += ` L${p[p.length - 1]}`; return close ? d + 'Z' : d;
 }
 function mapScreen() {
+  if (S.road === 'D') return mapScreenD();
   const P2m = id => MP(LL[id]);
   const main = ['tabriz', 'qizil', 'sultaniyya', 'ray', ...((S.army || S.visited.includes('ordu')) ? ['ordu'] : []), 'damghan', 'nishapur', 'mashhad'];
   const A = ['mashhad', 'murghab', 'andkhoy', 'balkh', 'termez', 'irongates', 'kesh', 'samarkand'], B = ['mashhad', 'tejen', 'merv', 'sardoba', 'amul', 'bukhara', 'rabat', 'samarkand'];
@@ -2514,7 +2516,8 @@ function arriveAt(id) {
   if (N[id].kind === 'river') return riverArrive(id);
   const pre = [];
   if (S.flags.shrineCure && N[id].kind === 'town') { const m = S.party.find(p => p.name === S.flags.shrineCure && p.alive); S.flags.shrineCure = null; if (m && m.sick) pre.push(cureMsg(m, 'At the town shrine, {n} sits by the tomb for an hour and comes out yawning. The jinn has gone.')); }
-  if (id === 'irongates' && monthOf(S.day) >= 10) pre.push(snowedIn());
+  if ((id === 'irongates' || id === 'bamiyan') && monthOf(S.day) >= 10) pre.push(snowedIn());
+  if (id === 'khyber') pre.push(khyberToll());
   if (id === 'nishapur' && S.army) { S.army = false; pre.push(msg('Near Nishapur the army turns off toward its summer pastures. An officer tells you the road ahead is all yours. You’re not sure he meant it kindly.', { scene: { mode: 'node', node: id } })); }
   pre.push(...beatsFor(id));
   if (pre.length) return runQueue(pre, () => landmarkScreen(id));
@@ -2528,6 +2531,7 @@ function landmarkScreen(id) {
 function leaveNode() {
   const id = S.segFrom;
   setScene('node', { node: id });
+  if (id === 'delhi' && !S.flags.gopal) { S.flags.gopal = true; return gopalScene(); }
   if (id === 'sultaniyya' && !S.flags.davit) return davitScene();
   if (id === 'sultaniyya' && !S.armyAsked) {
     S.armyAsked = true;
@@ -2577,7 +2581,7 @@ function riverScreen(id) {
   const opts = [];
   if (!nd.oxus) {
     opts.push({ label: 'Wade across', sub: rs.depth < 2.5 ? 'looks shallow enough' : rs.depth < 3.5 ? 'risky' : 'very risky', onClick: () => crossDone(ford()) });
-    opts.push({ label: 'Float over on blown-up sheepskins', sub: 'you steer', onClick: () => rs.depth < 1.6 ? crossDone(floatAcross()) : raftGame({ small: true, onDone: items => crossDone(items) }) });
+    opts.push({ label: 'Float over on blown-up sheepskins', sub: 'you steer', onClick: () => rs.depth < 1.6 ? crossDone(floatAcross()) : raftGame({ small: !nd.big, onDone: items => crossDone(items) }) });
     opts.push({ label: `Pay ${rv.who[0].toLowerCase() + rv.who.slice(1)} to take you`, sub: money(rv.ferry), disabled: S.money < rv.ferry, onClick: () => ferry(id) });
   } else {
     if (S.letter === true) opts.push({ label: 'Show your letter and take the ferry', sub: money(rv.ferry), disabled: S.money < rv.ferry, onClick: () => ferry(id) });
@@ -2636,6 +2640,7 @@ function bribe(id) {
 }
 function crossDone(items) {
   const ox = S.river && N[S.river.id] && N[S.river.id].oxus;
+  if (S.river && N[S.river.id] && N[S.river.id].big) items = [].concat(items, [msg('You are across the Indus. Behind you, Hindustan. Ahead, the mountains of Afghanistan and the long road to Kabul. Somebody starts singing, and nobody tells them to stop.', { title: 'Across the Indus', sound: 'fanfare', who: 'p2', emo: 'note' })]);
   if (ox) { alive().forEach(m => m.hp = Math.min(100, m.hp + 5)); items = [].concat(items, [msg(`You are across the Oxus! Behind you, Iran. Ahead, Turan: the land beyond the river.${has('otabek') ? ' Otabek kneels and kisses the mud, which he regrets.' : ''} Even the goat seems moved. <span class="good">Everyone gains 5 health.</span>`, { title: 'Beyond the river', sound: 'fanfare', who: 'goat', emo: 'heart' })]); }
   runQueue(items, () => { if (!leader().alive) return gameOver(); S.river = null; S.atNode = false; save(); setScene('walk'); travelScreen(); });
 }
@@ -2666,7 +2671,7 @@ function huntGame({ bonus, onDone }) {
   if (S.arrows <= 0) { runQueue([msg('You have no arrows.')], onDone); return; }
   loseDays(1);
   const region = curRegionForHunt();
-  hunt = { carry: Math.round((40 * alive().length + 60 * Math.min(S.camels, 3)) * (bonus ? 1.5 : 1)), t: 0, dur: 22, region, animals: [], arrows: [], kills: [], pops: [], taps: [], spawn: 0.4, total: 0, bonus, aim: 1, onDone, flash: '', over: false, bushes: Array.from({ length: 8 }, (_, i) => [hash(i + S.day) * W, 92 + hash(i * 3 + S.day) * 70]) };
+  hunt = { pool: S.road === 'D' && region === 'oasis' ? HUNT_POOL.punjab : HUNT_POOL[region], carry: Math.round((40 * alive().length + 60 * Math.min(S.camels, 3)) * (bonus ? 1.5 : 1)), t: 0, dur: 22, region, animals: [], arrows: [], kills: [], pops: [], taps: [], spawn: 0.4, total: 0, bonus, aim: 1, onDone, flash: '', over: false, bushes: Array.from({ length: 8 }, (_, i) => [hash(i + S.day) * W, 92 + hash(i * 3 + S.day) * 70]) };
   travelling = false; setScene('hunt', { region });
   screen(`<h2>${bonus ? 'The ring hunt!' : 'Hunting'}</h2><p class="big">${bonus ? 'Thousands of riders close the ring, and animals pour in from every side.' : 'You head out into the brush with your bow.'}</p><p class="dim">Tap to shoot. Every tap costs an arrow. Arrows drop as they fly, so aim a little high and ahead of runners. A near miss sends them bolting. Your crew and camels can haul about ${hunt.carry} lb back.</p>`, [{ label: 'Stop hunting', onClick: () => huntEnd() }]);
   huntHud();
@@ -2686,8 +2691,8 @@ function huntUpdate(dt) {
   hunt.t += dt; hunt.spawn -= dt;
   if (hunt.spawn <= 0) {
     hunt.spawn = hunt.bonus ? rnd(0.8, 1.2) : rnd(1.6, 2.8);
-    const kind = weighted(HUNT_POOL[hunt.region]), A = ANIMALS[kind], dir = chance(0.5) ? 1 : -1, y0 = rnd(84, 150 - A.h * 2);
-    const herd = (kind === 'gazelle' || kind === 'urial') && chance(0.5) ? ri(2, 3) : 1;
+    const kind = weighted(hunt.pool || HUNT_POOL[hunt.region]), A = ANIMALS[kind], dir = chance(0.5) ? 1 : -1, y0 = rnd(84, 150 - A.h * 2);
+    const herd = (kind === 'gazelle' || kind === 'urial' || kind === 'blackbuck') && chance(0.5) ? ri(2, 3) : 1;
     for (let k = 0; k < herd; k++) hunt.animals.push({ kind, x: dir > 0 ? -A.w * 2 - 2 - k * 30 : W + 2 + k * 30, y: clamp(y0 + rnd(-10, 10), 84, 150 - A.h * 2), dir, sp: A.sp * 1.9 * rnd(0.85, 1.15) * (hunt.bonus ? 0.75 : 1), pause: 0, dead: false });
   }
   for (const a of hunt.animals) { if (a.dead) continue; if (a.pause > 0) a.pause -= dt; else { a.x += a.dir * a.sp * (a.flee ? 1.8 : 1) * dt; if (!a.flee && chance(dt * 0.25)) a.pause = rnd(0.3, 0.9); } }
@@ -2905,6 +2910,7 @@ function arrivalSamarkand() {
   screen(`<p class="date">${dateStr(S.day)}</p><h1 style="font-size:clamp(38px,10vw,54px)">Samarkand!</h1><p class="big">${tw(head)}</p><p>${tw(text)}</p>`, [{ label: 'Continue', primary: true, onClick: () => reunions(() => late ? scoreScreen(false, null) : dazzleScreen()) }]);
 }
 function reunions(then) {
+  if (S.road === 'D') return reunionsD(then);
   const items = [];
   const MOM = { robe: '#FF6B4A', trim: '#FFF3A6', hat: 'scarf', hatc: '#FFFFFF', skin: 2 }, NINO = { robe: '#E2505F', trim: '#FFFFFF', hat: 'scarf', hatc: '#14B8A6', skin: 0 };
   if (has('otabek')) items.push(msg(`Otabek drops his bag in the middle of the street and runs. A woman in a doorway near the bazaar screams his name.${S.flags.otRing ? ' He gives her the tiny turquoise ring. It fits.' : ''} Then comes the drum solo. It is very long, and nobody minds.`, { title: 'Otabek is home', sound: 'sparkle', date: false, scene: { mode: 'reunion', a: LOOKS[2], b: MOM, prop: S.flags.otRing ? 'ring' : 'drum' } }));
@@ -2918,7 +2924,7 @@ function reunions(then) {
 function dazzleScreen() {
   setScene('arrive', { late: false });
   sfx.sparkle();
-  screen(`<h2>The center of the world</h2><p>${tw('Then you just stand there and look.')}</p><p>${tw('Turquoise domes blaze against the sky. There are rose gardens and melon stalls, silk from China, glass from Damascus, painters from Tabriz and stonecutters from Delhi. Plenty of those craftspeople did not come by choice. Timur’s armies carried them off from their own cities, and now they are building his.')}</p>${S.guest ? '' : `<p>${tw('Somewhere up on the scaffolding of the great mosque, a Georgian girl is cutting tiles. You never learn her name.')}</p>`}<p>${tw('The Castilian ambassador is writing everything down: whole roast horses, sheep’s heads, rice in every color, towers of melons, and wine poured from golden jugs until the guests are carried home.')}</p><p class="big">${tw('It is the most beautiful thing you have ever seen.')}</p>`,
+  screen(`<h2>The center of the world</h2><p>${tw('Then you just stand there and look.')}</p><p>${tw('Turquoise domes blaze against the sky. There are rose gardens and melon stalls, silk from China, glass from Damascus, painters from Tabriz and stonecutters from Delhi. Plenty of those craftspeople did not come by choice. Timur’s armies carried them off from their own cities, and now they are building his.')}</p>${S.guest ? '' : `<p>${tw(S.road === 'D' ? 'Somewhere among the Indian stonecutters on the great mosque, a man from Delhi is carving marble. You never learn his name.' : 'Somewhere up on the scaffolding of the great mosque, a Georgian girl is cutting tiles. You never learn her name.')}</p>`}<p>${tw('The Castilian ambassador is writing everything down: whole roast horses, sheep’s heads, rice in every color, towers of melons, and wine poured from golden jugs until the guests are carried home.')}</p><p class="big">${tw('It is the most beautiful thing you have ever seen.')}</p>`,
     [{ label: 'Present your gift to Timur', primary: true, onClick: giftCeremony }, { label: 'Read about Samarkand', sub: 'history', onClick: () => screen(`<div class="eyebrow">Samarkand</div><h2>History</h2><div class="panel"><p>${tw(SAMARKAND_HIST)}</p></div>`, [{ label: 'Back', primary: true, onClick: dazzleScreen }]) }]);
 }
 function giftCeremony() {
@@ -2958,6 +2964,7 @@ function scoreScreen(feast, gift) {
     [{ label: 'See the Top Ten', primary: true, onClick: () => topTenScreen(S.run) }, { label: 'Back to the title', onClick: titleScreen }]);
 }
 function resumeScreen() {
+  setRoad(S.road || 'T');
   if (S.goods && S.goods.silk) { S.goods.wool = (S.goods.wool || 0) + S.goods.silk; delete S.goods.silk; }
   if (S.atNode) {
     const nd = N[S.segFrom];
@@ -3094,7 +3101,7 @@ const VERSES = {
 };
 
 /* ---------- v4: crew moments along the road ---------- */
-const BEATS = {
+let BEATS = {
   sultaniyya: [[2, 'I slept under the third minaret when the army was here. Somebody stole my boots. I am not going to do anything. I just want to see who is wearing them.']],
   damghan: [[2, 'I saw them build those towers. I was twelve. They gave me horses to hold. Nobody told me what the towers were for until they were finished.', 'Anahit walks beside Otabek for the rest of the day. For once she doesn’t say anything about anybody’s liver.']],
   nishapur: [[1, 'There was a great hospital here once, before the Mongols. Doctors came from Baghdad to study in it. I keep checking the bazaar stalls, hoping to find one page of their books wrapped around somebody’s cheese.'], [4, 'Attar lived here! The man who wrote the Conference of the Birds! I can hear my grandfather doing the hoopoe. This is going in my book.', 'He writes for an hour. When you look over his shoulder, the page says: The goat ate a hoopoe feather.']],
@@ -3414,7 +3421,7 @@ function healthWhy() {
   const shown = parts.filter(([, v]) => Math.abs(v) >= 0.4).map(([k, v]) => `${k} ${v > 0 ? '+' : '−'}${Math.abs(v)}`);
   return shown.length ? ` <span class="why">· per day: ${shown.join(', ')}. Resting heals.</span>` : '';
 }
-const BARKS = {
+let BARKS = {
   1: ['Has anyone boiled the water?', 'Stick out your tongue. No reason.', 'I am not worried. I am a doctor. I am worried.', 'Your liver looks fine. From here.'],
   2: ['How many days now?', 'Do you think elephants get homesick?', 'I can smell apricots. I can’t. But I can.', 'Ba-dum. Ba-dum. Sorry. Drum habit.'],
   3: ['Bulbul is sulking again.', 'Camels can smell water a day away.', 'Too much sky? No such thing.', 'Lola likes you. She doesn’t like anyone.'],
@@ -3440,7 +3447,7 @@ function barkTick(dt) {
   const i = pick(pool), m = i === 'guest' ? null : S.party[i];
   let line = m && m.hp < 40 ? pick(BARK_LOW) : m && m.sick ? 'I am fine. Totally fine.' : S.food < 60 && chance(0.5) ? 'Is anyone else hungry?' : S.skins && S.water < 1.5 && chance(0.5) ? 'My mouth is made of sand.' : pick(BARKS[i]);
   if (chance(0.12)) { bark.k = 'goat'; line = pick(['Meh.', 'Mehhh.', 'Meh!']); } else bark.k = i === 'guest' ? 'guest' : 'p' + i;
-  bark.el.textContent = plainq(line); bark.el.hidden = false; bark.t = 3.4;
+  bark.el.textContent = plainq(subNames(line)); bark.el.hidden = false; bark.t = 3.4;
   try { SND.blip(bark.k === 'goat' ? 'goat' : i === 'guest' ? 'guest' : LOOKS[i].voice, 60 + line.length, line.includes('?'), 4); } catch (e) {}
 }
 
@@ -3473,6 +3480,289 @@ SHOWDRAW.camels = t => {
   P2(184, 158, 0, { robe: P.coral, trim: P.yellow, hat: 'fur', skin: 2, beard: '#3B2A4A' });
   if (Math.floor(t * 2) % 2) twinkle(196, 128, t, 2);
 };
+
+/* ==========================================================================
+   v9: THE DELHI ROAD — Delhi, the Punjab, the Indus, Peshawar, the Khyber,
+   Kabul and the Hindu Kush to Balkh, then on to Samarkand.
+   ========================================================================== */
+const CREW_T = CREW, LOOKS_T = LOOKS, GLOOK_T = GLOOK, GUEST_T = GUEST, BEATS_T = BEATS, BARKS_T = BARKS;
+const CREW_D = [
+  { name: '', from: 'Leader', role: 'You', bio: 'A first-time caravan leader with a borrowed map and a great deal of confidence.', skill: 'Makes the decisions' },
+  { name: 'Kamala', from: 'Hindu · from Banaras', role: 'Vaidya’s apprentice', bio: 'Learned Ayurveda from her grandmother: pulses, herbs and the three doshas. Argues with every Persian hakim she meets, and they argue back, happily, for hours.', skill: 'Better at curing the sick',
+    lines: { oasis: 'In heat like this, eat cooling things. Cucumber, mint, buttermilk. I will keep saying it until you do it.', mountain: 'Up here the air is thin and dry, and vata runs wild. Everyone will be cranky. That is medicine, not an insult.', desert: 'Sand in the eyes, sand in the food. Rinse with rosewater. Yes, the goat too.', khorasan: 'The hakims here say the body has four humors. My grandmother says three doshas. We have agreed that everyone else is wrong.', plateau: 'Drink, rest, eat something warm. Medicine is mostly boring.', goal: 'They say the doctors of Samarkand treat sadness with music. I want to see if it works better than ours. Ours is also music.' } },
+  { name: 'Ilyas', from: 'Delhi · Nizamuddin', role: 'Young qawwal', bio: 'Grew up singing Amir Khusrau’s songs at the shrine of Nizamuddin every Thursday night. Plays the dholak, claps like thunder, and cannot hear anyone else’s song without improving it.', skill: 'Music lifts everyone’s spirits',
+    lines: { oasis: 'Khusrau wrote that Hindustan has the best of everything: the best mangoes, the best birds, the best language. He had not been to Samarkand. Neither have I. We will see.', mountain: 'Do you hear the echo? It is singing the second part. Badly.', desert: 'No shade, no water, no audience. The worst concert of my life.', khorasan: 'Every village here has a different way of clapping. I am collecting them.', plateau: 'Walking songs go in fours. Left, right, left, right. The camels prefer threes.', goal: 'My teacher says Timur keeps the best singers in the world at his court. I want to hear them. And then I want to sing better.' } },
+  { name: 'Lakhi', from: 'Rabari · from the Thar', role: 'Camel herder', bio: 'From the camel herders of the Thar desert. Wears black wool in all weather and knows every camel by its walk. Her people say the goddess Parvati shaped the first camel out of clay, Shiva breathed life into it, and then they made the Rabaris to look after it, because somebody had to.', skill: 'Camels stay healthier; finds water',
+    lines: { oasis: 'Green, green, green. Camels get fat and lazy in green. So do people.', mountain: 'In the Thar we have no mountains. I am beginning to understand why.', desert: 'Now this is a desert. Not as good as ours. But a desert.', khorasan: 'fact', plateau: 'fact', goal: 'I have taken camels to Multan, to Delhi, to Lahore. Never to Samarkand. I want to sell them in the biggest market in the world, and buy a gold nose ring so big my aunts faint.' } },
+  { name: 'Govinda', from: 'Kashmiri Pandit · from Srinagar', role: 'Astronomer and scribe', bio: 'Reads Sanskrit, Persian and the sky. Can tell the time from the stars and the date from the moon. Wants to meet the star-gazers of Samarkand and tell them about zero.', skill: 'Reads verse and stars by the fire: everyone recovers faster when resting',
+    lines: { oasis: 'The numerals you count with, the ones with a zero? They were born here, went to Baghdad and are on their way to everyone else. You are welcome.', mountain: 'Up here the stars are so close you could correct them.', desert: 'Aryabhata said the earth turns, and the stars only seem to move. Tonight I believe him. Everything is turning.', khorasan: 'Al-Biruni came to India and learned Sanskrit to understand our astronomy. Very polite. Also very rude about our astrology. He was right.', plateau: 'Clear sky tonight. I will count. You may help.', goal: 'In Samarkand they say one of Timur’s grandsons, a boy of ten, already loves the stars. I would like to meet him. Also I need new ink.' } },
+];
+const LOOKS_D = [
+  { robe: '#FF6B4A', trim: '#FFE14A', hat: 'turban', hatc: '#FFE14A', skin: 2, voice: 'you' },
+  { robe: '#FFB13B', trim: '#FF4FA3', hat: 'scarf', hatc: '#FF4FA3', skin: 2, voice: 'p1' },
+  { robe: '#FFFFFF', trim: '#14B8A6', hat: 'cap', hatc: '#14B8A6', skin: 2, voice: 'p2' },
+  { robe: '#26275F', trim: '#FF6B4A', hat: 'scarf', hatc: '#3B2A4A', skin: 3, voice: 'p3' },
+  { robe: '#FFF3A6', trim: '#FF6B4A', hat: 'turban', hatc: '#FFFFFF', skin: 1, beard: '#3B2A4A', voice: 'p4' },
+];
+const GLOOK_D = { robe: '#4CBF6B', trim: '#FFFFFF', hat: 'hair', hatc: '#26275F', skin: 3, voice: 'guest' };
+const GUEST_D = { name: 'Gopal', from: 'Delhi · a stonecutter’s son', bio: 'In 1399 Timur marched his father, a stonecutter, to Samarkand with hundreds of others to build a great mosque. Gopal was eight. He is fourteen now, and he is going to find him.' };
+const NAMESUB = [[/\bAnahit\b/g, 'Kamala'], [/\bOtabek\b/g, 'Ilyas'], [/\bAybike\b/g, 'Lakhi'], [/\bYaqub\b/g, 'Govinda'], [/\bDavit\b/g, 'Gopal'], [/\bdutar\b/g, 'dholak']];
+const subNames = h => (S && S.road === 'D') ? NAMESUB.reduce((a, [re, to]) => a.replace(re, to), String(h)) : h;
+function setRoad(r) {
+  const d = r === 'D';
+  CREW = d ? CREW_D : CREW_T; LOOKS = d ? LOOKS_D : LOOKS_T; GLOOK = d ? GLOOK_D : GLOOK_T; GUEST = d ? GUEST_D : GUEST_T; BEATS = d ? BEATS_D : BEATS_T; BARKS = d ? BARKS_D : BARKS_T;
+}
+Object.assign(EULOGY, { Kamala: 'She would want everyone to keep eating cooling foods. Nobody can bring themselves to.', Ilyas: 'Nobody sings for a while. Then the goat starts, and it is terrible, and everyone joins in.', Lakhi: 'The camels will not walk the next morning. They know.', Govinda: 'That night the stars come out anyway. He would have named every one.' });
+
+/* ---------- places ---------- */
+Object.assign(N, {
+  delhi: { name: 'Delhi', kind: 'town', region: 'oasis', store: 1, letter: 30,
+    look: 'Delhi is a city of seven cities, each built by a new sultan beside the ruins of the last. Six years ago Timur sacked it. Now the markets are open again, the qawwals are singing again at the shrine of Nizamuddin, and the Qutb Minar, the tallest tower in India, is still standing, slightly annoyed.',
+    hist: 'The Delhi Sultanate has ruled north India for two hundred years. In December 1398 Timur crushed the sultan’s army outside the city, war elephants and all. Before the battle he had about a hundred thousand prisoners killed so they could not rise up behind him. Then his soldiers sacked Delhi for days, and a chronicler wrote that for two months not a bird moved in the city. Timur went home with treasure, elephants and thousands of craftsmen, including the stonecutters who would build his great mosque in Samarkand. Seventy years earlier, Ibn Battuta worked here as a judge for Sultan Muhammad bin Tughluq, who once moved the entire population of Delhi to a new capital seven hundred miles south, and then moved them back.',
+    legend: 'Sultan Ghiyasuddin Tughluq quarreled with the Sufi saint Nizamuddin, and while away at war he sent word that he would deal with the saint when he got home. Nizamuddin’s friends begged him to flee. He only said: Hanuz Dilli dur ast. Delhi is still far away. The sultan’s victory pavilion collapsed on him a few miles outside the city. People in Delhi still say it whenever anyone is too sure of getting somewhere.',
+    talk: [['A qawwal at Nizamuddin', 'We sing here every Thursday night. Seven hundred years from now they will still be singing here on Thursday night. I can feel it.', 'Amir Khusrau, who is buried right there, wrote riddles in Hindavi. Here is one. A plate full of pearls is turned upside down over everyone’s head. It spins all the way around, and not one pearl falls. What is it? The sky, full of stars. Children here learn it before they can walk.'],
+      ['A guard at the Qutb Minar', 'Five stories. The top two are new. Lightning knocked them off, and Sultan Firoz rebuilt them in white marble. Do not tell him they look different.'],
+      ['A scholar at Firoz Shah’s pillar', 'Sultan Firoz brought this pillar from Topra on a cart with forty-two wheels. It is covered in writing that nobody alive can read.', 'Brahmins, Buddhists, Persians, nobody can read it. The letters are two thousand years old. I copy them every morning, in case they come back into fashion. I hope it says something kind.']],
+    road: ['A caravan master', 'From here the road runs northwest across the Punjab, the land of five rivers. Then the Indus, the Khyber and the mountains. Go before the rains, or swim.'] },
+  sutlej: { name: 'the Sutlej River', label: 'Sutlej', kind: 'river', region: 'oasis',
+    river: { depth: [2, 2, 2.2, 2.6, 3.2, 4.2, 7, 8, 6, 3.4, 2.4, 2], width: [300, 480], ferry: 6, who: 'The boatmen' },
+    look: 'The Sutlej is the first of the five rivers that give the Punjab its name: panj ab, five waters. In spring it is wide and lazy. When the monsoon comes, it is wide and furious.',
+    local: [['A buffalo herder', 'My buffaloes swim it every day. They are better swimmers than you. No offense.'], ['A boatman', 'Wait for the rains and you will wait two months.']] },
+  lahore: { name: 'Lahore', kind: 'town', region: 'oasis', store: 1.2,
+    look: 'Lahore sits on the Ravi river behind red brick walls, with a fort, a bigger bazaar and the shrine of Ali Hujwiri, whom everyone here calls Data Ganj Bakhsh, the Giver of Treasures. Timur’s soldiers plundered it on their way home. It has bounced back, mostly by talking very loudly.',
+    hist: 'Lahore was a capital of the Ghaznavid sultans, who ruled from Afghanistan to the Punjab. Around 1040 the Sufi scholar Ali Hujwiri came here from Ghazni and wrote the Kashf al-Mahjub, the Unveiling of the Hidden, the oldest book about Sufism in Persian. In 1398 Timur’s army plundered the city on its way home from Delhi.',
+    talk: [['A pigeon keeper on a roof', 'My pigeons can fly to Multan and back. They choose not to.'],
+      ['A calligrapher', 'I write Qurans in Arabic, poems in Persian, letters in Sharada for the Kashmiri merchants and contracts in Nagari for everyone else. My hand speaks four languages. My mouth speaks one.'],
+      ['A wrestler’s mother', 'My son drinks a jug of milk with almonds every morning and wrestles in the mud every afternoon. He is very strong and very muddy.']],
+    road: ['A horse trader', 'Next is the Indus. It is not a river, it is an argument. Then Peshawar, then the Khyber.'] },
+  indus: { name: 'the Indus at Hund', label: 'Indus', kind: 'river', big: true, region: 'oasis',
+    river: { depth: [5, 5, 6, 7, 9, 11, 14, 16, 14, 9, 6, 5], width: [600, 900], ferry: 12, who: 'The ferrymen of Hund' },
+    look: 'The Indus! The Persians called it Hindu, the Greeks called it Indos, and from this river the whole land got its name: India. Here at Hund it comes roaring down out of the mountains, wide and cold and the color of slate.',
+    local: [['A ferryman', 'Alexander crossed here on a bridge of boats. He did not pay. You will pay.'], ['A fisherwoman', 'There are crocodiles downstream. Up here only the current eats people.']] },
+  peshawar: { name: 'Peshawar', kind: 'town', region: 'oasis', store: 1.4,
+    look: 'Peshawar is a crossroads of everybody: Pashtun horse traders, Persian poets, Punjabi cloth sellers and Tajik fruit sellers, all shouting at once. In one street the caravan men gather every evening to tell stories. Outside town, a huge grassy mound is all that is left of the tallest building in the old world.',
+    hist: 'Peshawar was Purushapura, capital of Kanishka, a Kushan emperor of the 100s who ruled from Central Asia to the Ganges and loved Buddhism. Here the sculptors of Gandhara made some of the first statues of the Buddha as a man, with wavy hair and Greek-style robes, because Alexander’s Greeks had left their art behind. Kanishka’s stupa was said to be the tallest building in the world. The Chinese pilgrims Faxian and Xuanzang both walked all the way here to see it.',
+    legend: 'The Buddha’s own begging bowl was once kept here. A king of the Yuezhi came to carry it home. He put it on an elephant, and the elephant could not move. He built a cart pulled by eight elephants, and they could not move it either. So the king understood the bowl was not ready to leave, built a stupa for it and went home without it. The pilgrim Faxian saw the bowl here around the year 400.',
+    talk: [['A storyteller in the bazaar', 'Every caravan that comes through Peshawar leaves a story behind. I collect them. Tonight I will tell yours, with improvements.', 'legend:BLIND'],
+      ['A Pashtun horse trader', 'My horses come from Badakhshan. They can climb a wall. Can your camels climb a wall? No. Buy a horse.'],
+      ['A boy selling pomegranates', 'Up the Khyber, the Afridis take a toll. Be polite. They are very polite, until they are not.']],
+    road: ['A muleteer', 'The Khyber is narrow and the Afridis hold it. Pay the toll, keep your camels close and do not sing.'] },
+  khyber: { name: 'the Khyber Pass', label: 'Khyber', kind: 'landmark', region: 'mountain',
+    look: 'The Khyber Pass winds up through bare brown mountains, so narrow in places that two camels cannot pass each other. Watchtowers sit on the ridges. Every army that ever came into India came this way, and every one of them complained about it.',
+    hist: 'Through these mountains came the Persians of Darius, Alexander’s generals, the Kushans, and Mahmud of Ghazni, who raided India seventeen times. The Afridi tribes have held the pass for centuries and charge everyone a toll, which they consider very reasonable given the views.',
+    talk: [['An Afridi toll keeper', 'There is a toll. It is very small. It is getting bigger while you think about it.'], ['A shepherd', 'From the top you can see Afghanistan on one side and Hindustan on the other. Both of them look tired.']] },
+  kabul: { name: 'Kabul', kind: 'town', region: 'mountain', store: 1.5, letter: 45,
+    look: 'Kabul sits in a bowl of mountains, with snow on the peaks even in summer and orchards everywhere else: grapes, apricots, pomegranates and walnuts. The old fortress, the Bala Hisar, watches the road. Timur’s grandson Pir Muhammad governs from here.',
+    hist: 'For centuries Kabul was ruled by Hindu and Buddhist kings, the Kabul Shahis, until the Ghaznavids pushed them east around the year 1000. Timur gave it to his grandson Pir Muhammad, who led the first raid into India in 1398. Here the roads from India, Persia and Central Asia tie themselves in a knot. Ibn Battuta crossed the mountains north of here in 1333 and wrote that the name Hindu Kush meant Killer of Hindus, because so many enslaved people from India died of cold in its passes.',
+    legend: 'People in Kabul say the city was founded by Cain, Adam’s son, and named after him: Qabil, Kabul. Nobody can prove otherwise, and Cain is not available for comment.',
+    talk: [['A gardener', 'Kabul has thirty-three kinds of grapes. I have counted. Twice.'],
+      ['A Tajik fruit seller', 'Our apricots go down to India dried, and come back as songs.'],
+      ['A soldier of Pir Muhammad', 'The prince is going to Samarkand for the feast too. Everyone is going. Who is guarding anything?']],
+    road: ['A caravan master', 'Next is the Hindu Kush. Go by Bamiyan. The pass is high, the snow comes early, and the Buddhas will keep you company.'] },
+  bamiyan: { name: 'Bamiyan', kind: 'landmark', region: 'mountain',
+    look: 'In a green valley under red cliffs stand two giant Buddhas, carved right out of the rock, the taller one higher than any minaret. Their faces are long gone, but their robes still fall in folds of stone, and the cliff around them is honeycombed with caves where monks once lived and painted the ceilings blue.',
+    hist: 'The Buddhas were carved around 600, when Bamiyan was a great Buddhist kingdom on the road between India and China. Xuanzang saw them in 630 and said the taller one shone with gold. In 1221 Genghis Khan’s grandson was killed here, and Genghis destroyed the city on the hill so completely that people still call it Shahr-e Gholghola, the City of Screams.',
+    legend: 'They say the city fell because the king’s daughter, angry with her father, told Genghis Khan where its water came from. He cut it off, and the city fell. Then he killed her too. Nobody in these stories ever learns anything.' },
+});
+N.peshawar.talk[0][2] = 'legend:' + LEGENDS.length;
+LEGENDS.push({ t: 'The blind men and the elephant', s: 'The poet Sanai of Ghazni, just down the road, told it like this. There was a city where everyone was blind. A king came with an elephant, and the people ran to find out what it was. One touched the ear and said: an elephant is a rug. One touched the trunk: it is a pipe. One touched a leg: it is a pillar. Each was sure. Each was wrong. Sanai said this is how we all talk about God. In India the Buddha told the same story fifteen hundred years earlier. The elephant has been very patient about it.', flag: null });
+Object.assign(EDGES, {
+  delhi: { to: 'sutlej', len: 60, region: 'oasis', dry: 0.1 },
+  sutlej: { to: 'lahore', len: 25, region: 'oasis', dry: 0 },
+  lahore: { to: 'indus', len: 55, region: 'oasis', dry: 0.25 },
+  indus: { to: 'peshawar', len: 11, region: 'oasis', dry: 0 },
+  peshawar: { to: 'khyber', len: 8, region: 'mountain', dry: 0.1 },
+  khyber: { to: 'kabul', len: 32, region: 'mountain', dry: 0.2 },
+  kabul: { to: 'bamiyan', len: 30, region: 'mountain', dry: 0 },
+  bamiyan: { to: 'balkh', len: 60, region: 'mountain', dry: 0.35 },
+});
+Object.assign(FOODS, {
+  delhi: [['samosas', 'Crisp pastry triangles stuffed with minced meat, pistachios and almonds. Amir Khusrau wrote that princes ate them. Ibn Battuta wrote that he ate them. Now you are eating them.', 2, { hp: 5 }], ['paan', 'A betel leaf folded around areca nut and lime. You chew, your mouth turns red, and you spit like a local. Ibn Battuta said it sweetens the breath and gladdens the heart.', 1, { hp: 3 }]],
+  lahore: [['lassi', 'Cold yogurt whipped with water and a pinch of salt, served in a clay cup you are supposed to smash afterward. Everyone smashes.', 1, { hp: 3, water: 1 }], ['saag and millet bread', 'Mustard greens cooked down for hours with ghee, and thick millet bread to scoop it. Kamala approves. Ilyas has thirds.', 2, { hp: 5 }]],
+  peshawar: [['lamb tikka', 'Chunks of lamb grilled on long iron skewers with nothing but salt. Peshawar does not believe in sauces. It believes in salt.', 2, { hp: 6 }], ['dried fruit', 'Apricots, figs, mulberries and walnuts from the valleys over the Khyber, piled in pyramids.', 2, { hp: 2, lb: 20 }]],
+  kabul: [['grapes', 'Kabul grapes, long and green and cold from the cellar. The gardener was right about the thirty-three kinds. You try six.', 1, { hp: 4 }], ['talkhan', 'Dried mulberries and walnuts pounded together into hard little cakes. Shepherds carry them for weeks. So will you.', 2, { lb: 25 }]],
+});
+Object.assign(SHOWS, {
+  delhi: { kind: 'qawwal', label: 'Hear the qawwali at Nizamuddin', title: 'Qawwali', hp: 4, text: 'It is Thursday night at the shrine of Nizamuddin. The qawwals sit in a row, clapping and singing Amir Khusrau’s songs, slow at first and then faster, the same line over and over until it stops being words and becomes something else. A man in the crowd starts to weep. Then a man next to him. Then you.' },
+  lahore: { kind: 'wrestle', label: 'Watch the wrestlers in the akhara', title: 'The akhara', hp: 3, text: 'In a pit of soft earth mixed with oil and turmeric, Punjabi wrestlers grapple for an hour without stopping. They live on milk, almonds and ghee and train from before dawn. The loser rubs earth on the winner’s back, and they go and drink milk together.' },
+  peshawar: { kind: 'naqqal', label: 'Listen in the storytellers’ street', title: 'The storytellers', hp: 4, text: 'Caravan men have swapped stories in this street for as long as anyone remembers. Tonight a Pashtun storyteller acts out the adventures of Amir Hamza and his trickster friend Amar, with a stick for a sword and a camel for a dragon. When he gets to the best part, he stops and passes the hat. Everyone pays. He continues.' },
+  kabul: { kind: 'whirl', label: 'Watch the attan dance', title: 'The attan', hp: 3, text: 'In a meadow outside the walls, Pashtun men dance the attan in a great circle to the dhol drum, slow and then faster, spinning, hair flying, until the circle becomes a wheel. Ilyas tries to join in and is gently spun out of the circle.' },
+});
+Object.assign(VERSES, {
+  delhi: ['With one glance you took it all,<br>my look, my mark, my name.', 'Amir Khusrau of Delhi, sung at his tomb every Thursday'],
+  lahore: ['Giver of treasures to the world, light of God’s own light:<br>to the imperfect, a perfect guide;<br>to the perfect, a guide.', 'attributed to Moinuddin Chishti, at Hujwiri’s tomb'],
+  peshawar: ['Hatred is never ended by hatred.<br>It is ended by love alone.<br>This is an old and eternal law.', 'The Dhammapada, the Buddha’s sayings, once copied here in Gandhara on birch bark'],
+});
+Object.assign(RSIGHT, {
+  sutlej: ['Watch the buffaloes swim', 'Water buffalo cross the river in a long line, only their noses and horns showing, with boys riding on their backs, steering with their heels.', 'Buffaloes'],
+  indus: ['Look for Alexander’s crossing', 'People say Alexander the Great crossed the Indus right here in 326 BC, on a bridge of boats. The king of Taxila sent him a welcome present: thirty elephants, three thousand oxen and more than ten thousand sheep. Your welcome present is a ferryman’s glare.', 'Alexander was here'],
+});
+
+/* ---------- crew moments on the Delhi road ---------- */
+const BEATS_D = {
+  lahore: [[2, 'Hujwiri’s shrine! He wrote the first book about Sufism in Persian, right here. Every qawwal in Delhi sings for him. I am going to sing for him too.', 'He does. The pigeons stay to listen.']],
+  peshawar: [[4, 'This was Purushapura, King Kanishka’s capital. His stupa was the tallest building in the world. Chinese pilgrims walked here from China just to see it. Now goats live in it.', 'The goat looks interested.'], ['guest', 'I bought a chisel. For my father. His old one must be worn out by now. It has been six years.', 'He holds it the whole way out of town.', 'chisel']],
+  khyber: [[3, 'In the Thar our camels would never walk up this. These camels are walking up this. I am proud of them. I will not tell them.']],
+  kabul: [[1, 'Kabul has the best fruit I have ever seen. In Ayurveda, a happy stomach is half of medicine. The other half is also the stomach.']],
+  bamiyan: [[4, 'Xuanzang saw these Buddhas shining with gold, eight hundred years ago. They are still here. Whatever happens to us, I hope they are still here in another eight hundred.', 'Nobody says anything for a while.']],
+  balkh: [[2, 'Rumi was born here! Every qawwal in Delhi sings his ghazals. He left as a boy and never came back. I am going to sing him one of his own songs, so he hears it here at least once.']],
+  irongates: [['guest', 'My father walked through here. Six years ago. He walked right through here.', 'Gopal touches the canyon wall, as if it might remember.']],
+  kesh: [[3, 'The herders here say their camels are the best in the world. I have seen their camels. I will be polite.']],
+};
+const BARKS_D = {
+  1: ['Drink something cool. Now.', 'Your pulse is fine. Your attitude, less so.', 'Mint. Everyone. Chew.', 'Ghee fixes almost everything.'],
+  2: ['Allah hu! Sorry. Warming up.', 'Clap on the off-beat, please.', 'Ta dhin dhin na...', 'Khusrau had a riddle about this road.'],
+  3: ['The camels like your hat.', 'Bulbul walks like my grandmother.', 'Water is close. I can smell it.', 'Black wool keeps the heat out. Trust me.'],
+  4: ['That star is Abhijit. You call it Vega.', 'Zero: invented here. You are welcome.', 'Waxing moon. Good for travel.', 'I have measured this road. It is long.'],
+  guest: ['Bapu always said, walk like water.', 'I can carry more. Really.', 'Do you think he will know me?'],
+};
+const BANTER_D = ['Govinda lies on his back after supper, naming the stars in Sanskrit. The goat lies next to him, naming nothing.', 'Govinda teaches everyone to write zero. “It is nothing,” he says. “That is the point.”', 'Govinda works out the date of the next eclipse on a piece of slate. The goat eats the slate. He works it out again.'];
+
+/* ---------- road events only on the Delhi road ---------- */
+const DEV = c => S.road === 'D';
+EVENTS.push(
+  { w: c => DEV(c) && c.region === 'oasis' && c.month >= 6 && c.month <= 8 && !c.rest ? 6 : 0, run: () => { loseDays(2); return msg('The monsoon arrives all at once, like someone emptying a bath. The road becomes a river and the river becomes a lake. In the fields, the peacocks dance in the rain, tails up, screaming with joy. You lose 2 days.', { title: 'The rains', who: 'goat', emo: '!' }); } },
+  { w: c => DEV(c) && c.region === 'oasis' && (c.month === 4 || c.month === 5) && !S.flags.loo ? 5 : 0, run: () => { S.flags.loo = true; return { type: 'choice', title: 'The loo', who: 'p1', emo: 'sweat', sound: 'bad', text: 'The loo is blowing: a hot wind off the plains, like standing in front of an oven door. The birds have stopped singing. Kamala ties wet cloths over everyone’s heads.', options: [
+      { label: 'Travel at night until it passes', sub: 'slower, cooler, for five days', run: () => { S.nightDays = 5; return msg('You sleep through the burning afternoons and walk under the stars. Govinda names them as you go.'); } },
+      { label: 'Drink raw mango water and push on', sub: has('anahit') ? 'Kamala swears by it' : 'an old remedy', run: () => { alive().forEach(m => m.hp = Math.max(1, m.hp - (has('anahit') ? 3 : 7))); return msg('You boil green mangoes, mash them with salt and cumin and drink the sour water. It helps. It does not help enough.'); } } ] }; } },
+  { w: c => DEV(c) && c.region === 'oasis' && !S.flags.banjara ? 2 : 0, run: () => { S.flags.banjara = true; return { type: 'choice', title: 'The Banjaras', who: 'p0', emo: 'sparkle', text: 'A Banjara caravan passes: hundreds of bullocks loaded with grain and salt, bells on every neck, and women in skirts sewn with tiny mirrors that flash like a river. They move whole harvests across India this way and have done for centuries.', options: [
+      { label: 'Buy grain', sub: `${money(6)} for 80 lb`, disabled: S.money < 6, run: () => { S.money -= 6; S.food += 80; return msg('They weigh it on a beam scale with a stone for a weight, very fairly. <span class="good">+80 lb food.</span>'); } },
+      { label: 'Camp with them for a night', run: () => { alive().forEach(m => m.hp = Math.min(100, m.hp + 5)); return msg('They sing all night and teach Ilyas a song about a bullock who falls in love with the moon. <span class="good">Everyone gains 5 health.</span>', { scene: { mode: 'fire' } }); } } ] }; } },
+  { w: c => DEV(c) && !S.flags.yogi ? 1.6 : 0, run: () => { S.flags.yogi = true; alive().forEach(m => m.hp = Math.min(100, m.hp + 6)); return msg('A Nath yogi with ash on his skin and great rings through his ears sits under a banyan tree by the road. He asks for nothing. He teaches you to breathe slowly through one nostril and then the other, which feels ridiculous and then, oddly, wonderful. <span class="good">Everyone gains 6 health.</span>', { title: 'The yogi', who: 'p0', emo: 'sparkle' }); } },
+  { w: c => DEV(c) && c.region === 'mountain' && !S.flags.kuchi ? 2 : 0, run: () => { S.flags.kuchi = true; loseDays(1); S.food += 20; alive().forEach(m => m.hp = Math.min(100, m.hp + 8)); return msg('Pashtun nomads have pitched their black goat-hair tents in a high meadow, moving their flocks up to the summer pastures. They invite you in for green tea made from wild herbs, bread and qurut, and will not hear of you leaving before morning. <span class="good">Everyone gains 8 health. +20 lb food. You lose a day.</span>', { title: 'The black tents', who: 'goat', emo: 'heart' }); } },
+  { w: c => DEV(c) && c.region === 'oasis' && !S.flags.tiger ? 1.4 : 0, run: () => { S.flags.tiger = true; return { type: 'choice', title: 'Tiger!', who: 'c0', emo: '!', sound: 'bad', text: 'In the tall grass by the river, something orange and black is watching the camels. It is a tiger, and it is very interested in Bulbul.', options: [
+      { label: 'Make as much noise as possible', sub: has('otabek') ? 'Ilyas has a dholak' : 'bang the pots', run: () => chance(has('otabek') ? 0.9 : 0.6) ? msg('Everyone bangs, shouts and drums at once. The tiger looks deeply offended and slides back into the grass.', { who: 'p2', emo: 'note' }) : camelDeath('The tiger is not impressed. It takes {c} and is gone.') },
+      { label: 'Back away very, very slowly', run: () => chance(0.7) ? msg('You back away. The tiger watches you go, yawns, and decides you are not worth it.') : camelDeath('You back away. The tiger follows, and takes {c}.') } ] }; } },
+);
+ANIMALS.peafowl = { lb: 8, sp: 46, w: 12, h: 8, body: [[0, 3, 4, 2, '#2E9A55'], [0, 2, 2, 1, '#4CBF6B'], [1, 3, 1, 1, '#FFE14A'], [3, 4, 1, 1, '#FFE14A'], [4, 3, 4, 3, '#1F7FD0'], [7, 1, 2, 3, '#1F7FD0'], [8, 0, 2, 2, '#1F7FD0'], [9, -1, 1, 1, '#14B8A6'], [9, 0, 1, 1, '#26275F'], [10, 1, 1, 1, '#FFB13B']], legs: [[[5, 6, 1, 2], [7, 6, 1, 2]], [[6, 6, 1, 2]]], legc: '#8A7A66' };
+ANIMALS.blackbuck = { ...ANIMALS.gazelle, body: ANIMALS.gazelle.body.map(b => b[4] === '#E6AE6E' ? [b[0], b[1], b[2], b[3], '#4A3A55'] : b) };
+Object.assign(ANIMAL_NAME, { peafowl: 'peacock', blackbuck: 'blackbuck' });
+HUNT_POOL.punjab = { peafowl: 28, partridge: 22, hare: 20, blackbuck: 20 };
+
+/* ---------- Khyber toll ---------- */
+function khyberToll() {
+  return { type: 'choice', title: 'The Afridi toll', who: 'p0', emo: '!', text: 'At the narrowest point, a row of Afridi tribesmen sit on the rocks with long rifles—no, long spears, it is 1404—and ask, very politely, for twenty tangas.', options: [
+    { label: 'Pay twenty tangas', sub: `you have ${money(S.money)}`, run: () => { if (S.money >= 20) { S.money -= 20; return msg('They thank you and wave you through. One of them offers the goat a mulberry.'); } S.food = Math.max(0, S.food - 60); return msg('You cannot pay. They take sixty pounds of food instead, apologizing the whole time.', { sound: 'bad' }); } },
+    has('otabek') ? { label: 'Let Ilyas sing for them', run: () => msg('Ilyas sings a Khusrau song, then a Pashto one he learned in Peshawar, badly. The tribesmen laugh, correct his Pashto, sing it properly, and let you through for nothing. Everyone is friends now, for exactly as long as it takes to get past them.', { who: 'p2', emo: 'note', sound: 'good' }) } : null,
+    { label: 'Refuse', run: () => { if (chance(0.4)) return msg('They look at each other, shrug and let you through. You do not know why. That is the Khyber.'); const [nm] = S.camels > 1 ? loseCamels(1) : [null]; return msg(`They take ${nm ? nm + ' the camel' : 'most of your arrows'} and send you on your way.`, { sound: 'bad' }); } } ] };
+}
+
+/* ---------- start the Delhi road ---------- */
+function quickStartD() {
+  newGame('merchant'); S.road = 'D'; S.route = 'D'; S.segFrom = 'delhi'; S.visited = ['delhi']; setRoad('D');
+  S.party = [mkMember('You', true), ...[1, 2, 3, 4].map(i => mkMember(CREW[i].name, false))]; addCamels(3);
+  setScene('node', { node: 'delhi' });
+  setTimeout(() => emote('goat', 'heart', 2.6), 900);
+  screen(`<div class="eyebrow">The Delhi road · 1404</div><h2>Your caravan</h2><div class="nrow">${faceImg(0, 'happy', '')}<input class="txt" id="nm0" maxlength="16" autocomplete="off" spellcheck="false" aria-label="Your name" placeholder="Your name"></div><div class="strip qs">${[1, 2, 3, 4].map(i => `<div class="pm">${faceImg(i, 'happy', CREW[i].name)}<span>${CREW[i].name}</span><small>${CREW[i].role}</small></div>`).join('')}</div><p>${tw('Delhi, six years after Timur sacked it. Everyone is talking about his feast in Samarkand, a thousand miles away over the highest mountains in the world. You are going.')}</p><p class="dim">${tw('Four travelers, five camels and a goat that wandered in from the shrine and will not leave.')}</p>`,
+    [{ label: 'Set off for Samarkand', primary: true, onClick: () => {
+      const v = ($('#nm0').value || '').trim() || pick(['Firoz', 'Zainab', 'Arjun', 'Meera', 'Daud', 'Roshan']);
+      S.party = [mkMember(v, true), ...[1, 2, 3, 4].map(i => mkMember(CREW[i].name, false))];
+      S.day = dayOf(2, 15); S.herd = []; S.camels = 0;
+      const k = kitFor(S.money); k.camels += 1;
+      const cost = k.camels * 40 + k.food * 0.15 + k.coats * 10 + k.bundles * 2 + k.saddles * 10 + k.skins * 4 + k.letter * 30 + k.rue * 2 + k.bead * 6 + k.tiryaq * 12;
+      S.money = Math.round((S.money - cost) * 100) / 100; addCamels(k.camels); S.food += k.food; S.coats += k.coats; S.arrows += k.bundles * 20; S.saddles += k.saddles; S.skins += k.skins; S.letter = !!k.letter; S.items.rue = k.rue; S.items.bead = k.bead; S.items.tiryaq = k.tiryaq; S.water = S.skins;
+      sfx.coin(); save(); departDelhi();
+    } }], { focus: false });
+}
+function departDelhi() {
+  S.atNode = true; S.segFrom = 'delhi'; S.segDone = 0; save();
+  setScene('node', { node: 'delhi' });
+  screen(`<p class="date">${dateStr(S.day)}</p><h2>Packed and ready</h2><p class="big">${tw('Your camels are loaded and waiting by the northern gate.')}</p><p>${tw('Ahead lie the Punjab, the Indus, the Khyber Pass and the Hindu Kush. But first, Delhi. It would be rude not to look around.')}</p>`,
+    [{ label: 'Look around Delhi', primary: true, onClick: menuScreen }]);
+}
+function gopalScene() {
+  sayScreen({ who: 'Gopal', look: GLOOK_D, node: 'delhi', before: `<p>${tw('He is about fourteen, with a bundle on his back and a stonecutter’s hammer tucked in his belt.')}</p>`,
+    line: 'Are you going to Samarkand? Timur’s men took my father there six years ago, to cut stone for a mosque. Can I walk with you? I can carry things. I can carry a lot of things.',
+    buttons: [
+      { label: 'Of course you can', primary: true, onClick: () => { S.guest = 'Gopal'; save(); runQueue([msg('Gopal picks up the heaviest bag before anyone can stop him. Ilyas gives him half his bread. The goat gives him a long look and then lets him walk beside it.', { title: 'Gopal', sound: 'sparkle', who: 'p2', emo: 'heart' })], travelScreen); } },
+      { label: 'Give him food and say no', onClick: () => { S.food = Math.max(0, S.food - 10); runQueue([msg('You give him what bread you can spare. He thanks you. When you look back from the first hill, he is walking behind you anyway, at a polite distance. You stop and wait for him.')], () => { S.guest = 'Gopal'; save(); travelScreen(); }); } },
+    ] });
+}
+function reunionsD(then) {
+  const items = [];
+  const BAPU = { robe: '#FFF3E4', trim: '#FFB13B', hat: 'turban', hatc: '#FFFFFF', skin: 3, beard: '#F6F1EA' };
+  if (S.guest) { S.flags.reunited = true; items.push(msg(`At the great mosque Timur is building, hundreds of Indian stonecutters are at work, and ninety-five elephants he brought from India are hauling marble. Gopal walks along the rows calling “Bapu!” Near the end, an old man with white dust in his beard puts down his chisel.${S.flags.chisel ? ' Gopal gives him the new one from Peshawar. His father turns it over and over, and cannot say anything at all.' : ''}`, { title: 'Gopal finds his father', sound: 'sparkle', date: false, scene: { mode: 'reunion', a: GLOOK_D, b: BAPU, prop: S.flags.chisel ? 'ring' : null } })); }
+  items.push(...questEndings());
+  if (has('otabek')) items.push({ type: 'say', who: 'Ilyas', look: LOOKS[2], node: 'samarkand', mode: 'talk', line: 'Timur’s musicians asked me to stay. I said no. I am going home with eleven new songs and one very good insult.', aside: 'That night he sings Khusrau at the feast. Even the Chinese ambassadors clap, and they are not supposed to enjoy anything.' });
+  if (has('anahit')) items.push({ type: 'say', who: 'Kamala', look: LOOKS[1], node: 'samarkand', mode: 'talk', line: 'I traded three cures with a Chinese doctor and two with a Persian hakim. Nobody won. I am going to write a book of cures from three countries, and it will start with cooling foods.' });
+  if (has('aybike')) items.push({ type: 'say', who: 'Lakhi', look: LOOKS[3], node: 'samarkand', mode: 'talk', line: 'Sold. Every camel except Bulbul. Bulbul is not for sale. I bought the nose ring. My aunts are going to faint.', aside: 'She leaves for the Thar with a new herd and Bulbul in front, as if Bulbul had planned the whole thing.' });
+  if (has('yaqub')) items.push({ type: 'say', who: 'Govinda', look: LOOKS[4], node: 'samarkand', mode: 'talk', line: 'A boy of ten, one of Timur’s grandsons, Ulugh Beg, asked me how far away the moon is. I told him. He wrote it down. He wants to build the greatest observatory in the world, here in Samarkand.', aside: 'He will. Twenty years from now.' });
+  runQueue(items, then);
+}
+
+/* ---------- sprites for the new places ---------- */
+Object.assign(SPRITES, {
+  delhi: r => { wallR(r, 4, 116, 63, 10, '#E8A07A', '#C9785A'); for (let y = 4; y < 63; y++) { const w = Math.round(4 + (y - 4) * 0.13); r(y % 10 < 5 ? '#D9765A' : '#E89A72', 30 - Math.floor(w / 2), y, w, 1); } [16, 28, 40].forEach(y => r('#FFF0DA', 24, y, 13, 1)); r('#FFFFFF', 28, 2, 5, 6); r('#FFF3E4', 62, 44, 30, 19); dome(r, 77, 44, 12, '#FFF3E4', '#FFFFFF'); r(DARK, 74, 51, 7, 12); dome(r, 60, 48, 4, '#FFF3E4', null, { fin: false }); dome(r, 94, 48, 4, '#FFF3E4', null, { fin: false }); r('#E8D7B0', 106, 16, 3, 47); r('#FFF6E0', 106, 16, 1, 47); r(GOLD, 105, 14, 5, 2); },
+  lahore: r => { wallR(r, 4, 116, 63, 14, '#D98C6A', '#B86A4E'); [12, 30, 90, 108].forEach(x => { r('#D98C6A', x - 4, 40, 9, 23); dome(r, x, 40, 4, '#E8A07A', null, { fin: false }); }); r('#FFF3E4', 48, 34, 24, 22); dome(r, 60, 34, 11, '#4CBF6B', '#A8F0B8'); r(DARK, 57, 44, 6, 12); for (let i = 0; i < 6; i++) r(P.white, 40 + i * 9, 14 + (i % 2) * 4, 2, 1); },
+  peshawar: r => { for (let dy = 0; dy < 22; dy++) { const w = Math.round(Math.sqrt(22 * 22 - dy * dy)); r('#D9B48A', 26 - w, 59 - dy, w * 2 + 1, 1); } r('#C49A6E', 2, 59, 50, 4); r('#9FD08A', 10, 44, 30, 2); [[60, '#FF6B4A'], [76, '#14B8A6'], [92, '#FFB13B'], [108, '#FF4FA3']].forEach(([x, c]) => { r(MUD, x - 7, 44, 14, 19); r(c, x - 8, 40, 16, 4); for (let k = 0; k < 16; k += 4) r(P.white, x - 8 + k, 40, 2, 4); r(DARK, x - 3, 50, 6, 13); }); },
+  khyber: r => { for (let x = 0; x < 120; x++) { if (Math.abs(x - 62) < 5) continue; const h = 22 + Math.abs(x - 62) * 0.5 + hash(x) * 8, top = 63 - Math.min(58, h); r('#C9A27A', x, top, 1, 63 - top); if (hash(x * 3) > 0.7) r('#E2C29A', x, top, 1, 2); } r('#B88A60', 92, 8, 9, 14); for (let i = 0; i < 3; i++) r('#B88A60', 91 + i * 4, 5, 2, 3); r(DARK, 95, 12, 3, 4); },
+  kabul: r => { for (let x = 0; x < 120; x++) { const h = Math.round(32 + Math.sin(x * 0.08) * 10 + Math.sin(x * 0.21) * 5); r('#B7A6F2', x, 63 - h, 1, h); if (h > 38) r(P.white, x, 63 - h, 1, 3); } wallR(r, 50, 116, 63, 12, MUD, MUDD); r(MUD, 70, 30, 30, 21); for (let i = 0; i < 5; i++) r(MUD, 70 + i * 7, 27, 4, 3); r(DARK, 82, 40, 6, 11); [[12, 52], [26, 55], [40, 53]].forEach(([x, y]) => blob(r, x, y, 7, P.leaf, P.leafL)); },
+  bamiyan: r => { r('#D9946A', 0, 6, 120, 57); for (let x = 0; x < 120; x += 3) r('#E8A97E', x, 6 + (hash(x) * 4 | 0), 2, 2); const niche = (x, w, h) => { r('#8A4E3A', x, 63 - h, w, h); dome(r, x + w / 2, 63 - h, Math.floor(w / 2), '#8A4E3A', null, { fin: false }); r('#C98A62', x + 3, 63 - h + 4, w - 6, h - 4); r('#B07050', x + 5, 63 - h + 10, w - 10, h - 10); r('#B07050', x + w / 2 - 3, 63 - h + 4, 6, 6); for (let y = 63 - h + 14; y < 62; y += 4) r('#A06548', x + 5, y, w - 10, 1); }; niche(18, 20, 46); niche(80, 14, 32); for (let i = 0; i < 16; i++) r('#6A3A2A', 4 + hash(i * 7) * 110, 12 + hash(i * 3) * 34, 3, 3); r('#7FCF7F', 0, 60, 120, 3); },
+});
+
+/* ---------- the Delhi road map ---------- */
+const LLD = { delhi: [77.2, 28.6], sutlej: [75.8, 31.0], lahore: [74.34, 31.55], indus: [72.43, 34.03], peshawar: [71.57, 34.01], khyber: [71.0, 34.15], kabul: [69.17, 34.53], bamiyan: [67.83, 34.82], balkh: [66.9, 36.76], termez: [67.28, 37.22], irongates: [67.15, 38.3], kesh: [66.83, 39.06], samarkand: [66.97, 39.65] };
+const DX = lon => +((lon - 63.6) * 25 + 10).toFixed(1), DY = lat => +((40.2 - lat) * 22 + 8).toFixed(1), DP = ([lo, la]) => [DX(lo), DY(la)];
+function dPath(pts) { const p = pts.map(DP); let d = `M${p[0]}`; for (let i = 1; i < p.length - 1; i++) { const m = [(p[i][0] + p[i + 1][0]) / 2, (p[i][1] + p[i + 1][1]) / 2]; d += ` Q${p[i]} ${m}`; } return d + ` L${p[p.length - 1]}`; }
+function mapScreenD() {
+  const ids = ['delhi', 'sutlej', 'lahore', 'indus', 'peshawar', 'khyber', 'kabul', 'bamiyan', 'balkh', 'termez', 'irongates', 'kesh', 'samarkand'];
+  const P = id => DP(LLD[id]), done = S.visited.filter(id => LLD[id]);
+  let cur = P(S.segFrom); if (!S.atNode) { const e = edgeOf(S.segFrom); if (e && LLD[e.to]) { const a = P(S.segFrom), b = P(e.to), f = S.segDone / e.len; cur = [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f]; } }
+  const riv = r => `<path class="riv" d="${dPath(r)}"/><path class="rivL" d="${dPath(r)}"/>`;
+  const rivers = [
+    [[79.5, 32.6], [77.6, 34.2], [75.5, 35.3], [74.6, 35.6], [73.4, 35.0], [72.4, 34.0], [71.5, 32.9], [71.0, 31.5], [70.6, 30.0], [69.8, 28.5], [69.0, 26.8]],
+    [[68.6, 34.5], [69.2, 34.53], [70.45, 34.43], [71.6, 34.1], [72.3, 33.95]],
+    [[74.5, 34.2], [73.6, 33.2], [72.5, 32.2], [72.1, 31.2], [71.6, 30.0]], [[75.6, 33.0], [74.5, 32.5], [73.5, 31.6], [72.4, 30.9], [71.7, 29.8]],
+    [[76.0, 32.5], [74.8, 31.9], [74.3, 31.6], [73.0, 30.8], [72.2, 30.4]], [[77.6, 31.7], [76.5, 31.2], [75.6, 31.0], [74.6, 30.8], [73.5, 30.0], [71.8, 29.3]],
+    [[77.7, 31.0], [77.3, 29.9], [77.25, 28.6], [77.7, 27.0]],
+    [[69.9, 37.0], [67.3, 37.2], [66.5, 37.35], [65.2, 37.85], [64.2, 38.4], [63.4, 39.3]], [[68.6, 39.5], [67.0, 39.62], [65.6, 40.1]],
+  ].map(riv).join('');
+  const mtn = (lo, la, s = 1) => { const [x, y] = DP([lo, la]), w = 8 * s, h = 9 * s; return `<path class="mtn" d="M${x - w},${y} L${x},${y - h} L${x + w},${y}Z"/><path class="snow" d="M${x - w * 0.36},${y - h * 0.64} L${x},${y - h} L${x + w * 0.36},${y - h * 0.64} L${x + w * 0.14},${y - h * 0.56} L${x},${y - h * 0.68} L${x - w * 0.14},${y - h * 0.56}Z"/>`; };
+  const mtns = [[66.2, 35.4, 1], [67.4, 35.6, 1.2], [68.6, 35.3, 1.3], [69.8, 35.7, 1.2], [70.9, 35.9, 1.1], [72.0, 36.3, 1], [74.4, 36.4, 1.3], [75.8, 36.0, 1.4], [77.2, 35.2, 1.3], [76.0, 34.0, 1.1], [77.8, 33.3, 1.2], [78.8, 32.2, 1.1], [70.0, 32.4, 0.8], [69.8, 31.0, 0.8], [68.3, 38.7, 0.9], [69.2, 39.0, 1]].map(m => mtn(...m)).join('');
+  const LP = { delhi: [0, 15, 'middle'], sutlej: [8, 4, 'start'], lahore: [8, 4, 'start'], indus: [8, 10, 'start'], peshawar: [0, 15, 'middle'], khyber: [-2, -9, 'middle'], kabul: [0, 14, 'middle'], bamiyan: [-8, 4, 'end'], balkh: [-8, 4, 'end'], termez: [8, 4, 'start'], irongates: [8, 4, 'start'], kesh: [-8, 4, 'end'], samarkand: [10, 2, 'start'] };
+  const icon = (id) => { const [x, y] = P(id), n = N[id], d = done.includes(id) ? ' done' : '';
+    if (id === 'samarkand') return `<g transform="translate(${x},${y})" class="ico big"><rect x="-8" y="-2" width="16" height="6"/><path class="dome" d="M-6.5,-2 a3.2,3.2 0 0 1 6.4,0z M0.6,-2 a3.4,3.4 0 0 1 6.8,0z"/><path class="dome" d="M-3.2,-2 a3.4,4.6 0 0 1 6.4,0z" style="fill:#3B5BD6"/><rect x="-9.5" y="-9" width="1.6" height="13" class="mina"/><rect x="7.9" y="-9" width="1.6" height="13" class="mina"/></g>`;
+    if (n.kind === 'river') return `<g transform="translate(${x},${y})" class="ico${d}"><circle r="3.6" class="ferry"/><path d="M-2.4,0.4 q1.2,-1.2 2.4,0 t2.4,0" class="wave"/></g>`;
+    if (n.kind === 'landmark') return `<g transform="translate(${x},${y})" class="ico${d}"><path class="star" d="M0,-4.4 L1.3,-1.4 4.4,-1.3 2,0.8 2.7,4 0,2.2 -2.7,4 -2,0.8 -4.4,-1.3 -1.3,-1.4Z"/></g>`;
+    if (id === 'delhi') return `<g transform="translate(${x},${y})" class="ico${d}"><rect x="-6" y="-0.6" width="12" height="4"/><path class="dome" d="M-3,-0.6 a3,3.2 0 0 1 6,0z"/><path d="M-6.5,3.4 L-5.5,-10 -4.5,3.4Z" fill="#D9765A" stroke="#26275F" stroke-width=".6"/></g>`;
+    return `<g transform="translate(${x},${y})" class="ico${d}"><rect x="-4" y="-0.6" width="8" height="4"/><path class="dome" d="M-3,-0.6 a3,3.2 0 0 1 6,0z"/><rect x="-0.4" y="-5" width="0.8" height="1.4" class="mina"/></g>`; };
+  const labels = ids.map(id => { const [x, y] = P(id), [dx, dy, an] = LP[id], n = N[id]; return `${icon(id)}<text x="${x + dx}" y="${y + dy}" text-anchor="${an}" class="lbl${id === 'samarkand' ? ' big' : ''}">${esc(id === 'irongates' ? 'Iron Gates' : n.label || n.name.replace(/^the /, ''))}</text>`; }).join('');
+  const grey = (lo, la, t) => { const [x, y] = DP([lo, la]); return `<circle cx="${x}" cy="${y}" r="2" fill="#C9C3E3"/><text class="grey" x="${x + 4}" y="${y + 3}">${t}</text>`; };
+  const [tx, ty] = DP([76.4, 30.0]);
+  const tiger = `<g transform="translate(${tx},${ty})" class="tiger">${reduceMotion ? '' : `<animateTransform attributeName="transform" type="translate" values="${tx} ${ty};${tx + 3} ${ty};${tx} ${ty}" dur="4s" repeatCount="indefinite"/>`}<ellipse rx="9" ry="4" fill="#FFA23B" stroke="#26275F" stroke-width=".7"/><circle cx="9" cy="-2" r="3.6" fill="#FFA23B" stroke="#26275F" stroke-width=".7"/><path d="M-4,-3.6 v7 M-1,-4 v8 M2,-4 v8 M5,-3.6 v7" stroke="#26275F" stroke-width="1"/><path d="M-9,0 q-5,-2 -6,-6" fill="none" stroke="#FFA23B" stroke-width="1.6"/><circle cx="10" cy="-2.6" r=".7" fill="#26275F"/></g><text class="note" x="${tx}" y="${ty + 12}" text-anchor="middle">here be tigers</text>`;
+  const [px2, py2] = DP([73.4, 32.4]);
+  const peacock = `<g transform="translate(${px2},${py2})"><path d="M0,0 m-7,0 a7,6 0 0 1 14,0z" fill="#4CBF6B" stroke="#26275F" stroke-width=".6"/><circle cx="-4" cy="-2.5" r="1" fill="#1F7FD0"/><circle cx="0" cy="-4" r="1" fill="#1F7FD0"/><circle cx="4" cy="-2.5" r="1" fill="#1F7FD0"/><ellipse cy="1" rx="2" ry="3" fill="#1F7FD0" stroke="#26275F" stroke-width=".5"/></g>`;
+  const meMark = `<g transform="translate(${cur[0]},${cur[1]})"><circle class="me" r="4.6">${reduceMotion ? '' : '<animate attributeName="r" values="4;5.6;4" dur="1.4s" repeatCount="indefinite"/>'}</circle><g transform="translate(0,-10)"><rect x="-10" y="-6" width="20" height="9" rx="4.5" class="youbg"/><text class="you" text-anchor="middle" y="1">you</text></g></g>`;
+  const svg = `<svg viewBox="0 0 400 290" role="img" aria-label="Map of the road from Delhi to Samarkand"><style>
+    .land{fill:#FFF1DE}.riv{fill:none;stroke:#3FA4F0;stroke-width:2.4;stroke-linecap:round}.rivL{fill:none;stroke:#B9E3FF;stroke-width:.8;stroke-linecap:round;stroke-dasharray:2 4}
+    .mtn{fill:#C9BCFF;stroke:#8F7FE0;stroke-width:.8;stroke-linejoin:round}.snow{fill:#fff}.sand{fill:#FFE3B8;opacity:.8}.green{fill:#D6F2C4;opacity:.8}
+    .todo{fill:none;stroke:#8E89B8;stroke-width:1.6;stroke-dasharray:3 3}.done-l{fill:none;stroke:#FF4FA3;stroke-width:3.4;stroke-linejoin:round;stroke-linecap:round}
+    .ico rect{fill:#FFD9A8;stroke:#26275F;stroke-width:.7}.ico .dome{fill:#14B8A6;stroke:#26275F;stroke-width:.7}.ico .mina{fill:#FFE14A;stroke:#26275F;stroke-width:.5}.ico.done .dome{fill:#FF4FA3}
+    .ico .ferry{fill:#fff;stroke:#1F7FD0;stroke-width:1}.ico.done .ferry{fill:#FFD6E8}.ico .wave{fill:none;stroke:#1F7FD0;stroke-width:.9}.ico .star{fill:#FFE14A;stroke:#26275F;stroke-width:.7}.ico.done .star{fill:#FF9FCB}
+    .lbl{font-family:Gaegu,'Comic Sans MS',cursive;font-weight:700;font-size:12px;fill:#26275F;paint-order:stroke;stroke:#FFF1DE;stroke-width:3px;stroke-linejoin:round}.lbl.big{font-family:'Bagel Fat One','Arial Black',sans-serif;font-weight:400;font-size:14px;fill:#FF4FA3}
+    .rg{font-family:'Bagel Fat One','Arial Black',sans-serif;font-size:16px;fill:#E9D3B4;letter-spacing:3px}.dl{font-family:Gaegu,cursive;font-weight:700;font-size:11px;fill:#D99A55;letter-spacing:1px}
+    .rl{font-family:Gaegu,cursive;font-weight:700;font-size:10.5px;fill:#1F7FD0;font-style:italic}.note{font-family:Gaegu,cursive;font-weight:700;font-size:9.5px;fill:#C9732E}.grey{font-family:Gaegu,cursive;font-weight:700;font-size:10.5px;fill:#A9A3C9}
+    .comp circle{fill:#FFF8EF;stroke:#26275F;stroke-width:.8}.cn{fill:#FF4FA3}.ce{fill:#C9BCFF}.comp text{font-family:Silkscreen,monospace;font-size:7px;fill:#26275F}.goatb{fill:#fff;stroke:#26275F;stroke-width:.7}.horn{stroke:#8F7FE0;stroke-width:.9}
+    .me{fill:#FFE14A;stroke:#26275F;stroke-width:1.6}.youbg{fill:#26275F}.you{font-family:Silkscreen,monospace;font-size:6.5px;fill:#FFE14A}
+    .cart{fill:#FFF8EF;stroke:#26275F;stroke-width:1}.cartT{font-family:'Bagel Fat One','Arial Black',sans-serif;font-size:12px;fill:#FF4FA3}.cartS{font-family:Silkscreen,monospace;font-size:5.4px;fill:#1F7FD0}
+  </style><rect class="land" width="400" height="290"/>
+    <ellipse class="sand" cx="${DX(71.8)}" cy="${DY(27.6)}" rx="56" ry="20"/><text class="dl" x="${DX(70.6)}" y="${DY(27.4)}">Thar desert</text>
+    <ellipse class="green" cx="${DX(74.4)}" cy="${DY(30.9)}" rx="62" ry="26"/>
+    <text class="rg" x="${DX(72.2)}" y="${DY(28.75)}">HINDUSTAN</text><text class="rg" x="${DX(63.9)}" y="${DY(33.4)}">KHORASAN</text><text class="rg" x="${DX(71.2)}" y="${DY(38.8)}">TURAN</text>
+    <text class="dl" x="${DX(72.3)}" y="${DY(31.9)}" style="fill:#5DAE6A">Punjab · five rivers</text>
+    ${rivers}<text class="rl" x="${DX(70.5)}" y="${DY(30.4)}" transform="rotate(-62 ${DX(70.5)} ${DY(30.4)})">Indus</text><text class="rl" x="${DX(64.6)}" y="${DY(38.9)}" transform="rotate(-30 ${DX(64.6)} ${DY(38.9)})">Oxus</text>
+    ${mtns}<text class="grey" x="${DX(67.5)}" y="${DY(36.05)}">Hindu Kush</text><text class="grey" x="${DX(76.6)}" y="${DY(32.4)}">Himalaya</text><text class="grey" x="${DX(74.2)}" y="${DY(37.0)}">Karakoram</text>
+    ${grey(71.47, 30.2, 'Multan')}${grey(74.8, 34.1, 'Kashmir')}${grey(68.4, 33.55, 'Ghazni')}
+    ${tiger}${peacock}
+    <polyline class="todo" points="${ids.map(id => P(id).join(',')).join(' ')}"/><polyline class="done-l" points="${done.map(id => P(id)).concat([cur]).map(p => p.join(',')).join(' ')}"/>${labels}
+    <g transform="translate(270,6)"><rect class="cart" width="122" height="26" rx="6"/><text class="cartT" x="61" y="14" text-anchor="middle">The Delhi Road</text><text class="cartS" x="61" y="22" text-anchor="middle">DELHI TO SAMARKAND · 1404</text></g>
+    <g transform="translate(372,262)" class="comp"><circle r="12"/><path d="M0,-11 L3,0 0,11 -3,0Z" class="cn"/><path d="M-11,0 L0,-3 11,0 0,3Z" class="ce"/><text y="-14" text-anchor="middle">N</text><g transform="translate(-9,8) scale(0.7)"><rect x="-4" y="-2" width="8" height="4" rx="2" class="goatb"/><circle cx="4.5" cy="-3" r="2.2" class="goatb"/><path d="M3.6,-5 l-1,-2 M5.6,-5 l1,-2" class="horn"/></g></g>
+    ${meMark}</svg>`;
+  screen(`<h2>The map</h2><div class="map">${svg}<div class="legend"><span><i></i>traveled</span><span><i class="todo"></i>still ahead</span><span><b></b>you</span></div></div>`, [{ label: 'Done', primary: true, onClick: menuScreen }]);
+}
+
+const GOPAL_LINES = ['My father can carve a lotus out of marble so thin you can see light through it. I can carve a potato.', 'Thank you. I keep saying it. I will keep saying it.', 'In Delhi we have mountains too. They are made of rubble. These are better.'];
+EVENTS.push({ w: () => S.road === 'D' && !S.flags.holi && S.day >= dayOf(2, 14) && S.day <= dayOf(2, 30) ? 60 : 0, run: () => { S.flags.holi = true; alive().forEach(m => m.hp = Math.min(100, m.hp + 6)); return msg('It is Holi, the spring festival. In the village by the road, everybody is throwing colored powder and water at everybody else: red, yellow, green, pink. Nobody is spared. Not the camels, not the goat. The goat is now pink. It will be pink until Kabul. <span class="good">Everyone gains 6 health.</span>', { title: 'Holi!', sound: 'fanfare', who: 'goat', emo: 'heart' }); } });
 
 /* ---------- boot ---------- */
 window.__trail = { buzk: () => buzkGame({ onDone: items => runQueue(items, menuScreen) }), show: (k, id) => { setScene('show', { kind: k, node: id || S.segFrom }); }, fire: () => setScene('fire'), reunion: () => setScene('reunion', { a: LOOKS[2], b: GLOOK, prop: 'ring' }), state: () => S, setDay: ms => { DAY_MS = ms; }, scene: () => scene, hunt: () => hunt, raft: () => raft, huntEnd, raftEnd, jump: id => { travelling = false; arriveAt(id); }, raftTest: night => raftGame({ night, onDone: items => crossDone(items) }), emote, cue: n => { forcedCue = n; }, snd: SND, amb: t => ambSpawnType(t), haggle: () => haggleGame(S.segFrom, m => storeScreen(S.segFrom, menuScreen, m)) };
