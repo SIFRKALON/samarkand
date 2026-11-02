@@ -4045,7 +4045,7 @@ const POEM = [
 ];
 function poemScreen() {
   setScene('title');
-  screen(`<div class="eyebrow">James Elroy Flecker, 1913</div><h2>The Golden Journey to Samarkand</h2><p class="stage poem">At the Gate of the Sun, Bagdad, in olden time.</p><div class="panel poem">${POEM.map(([w, t]) => `<p class="who">${w}</p><p>${t.split('<br>').map(l => `<span class="ln">${l}</span>`).join('')}</p>`).join('')}</div><p class="dim small">From the poem’s epilogue, shortened. Flecker wrote it a century ago about a caravan leaving Baghdad. We left out a passage that mocks Jewish merchants, because this game does not need it. The Old Man’s list of household comforts, enslaved people among them, is how Flecker imagined Baghdad.</p>`,
+  screen(`<h2>The Golden Journey to Samarkand</h2><div class="eyebrow">James Elroy Flecker, 1913</div><p class="stage poem">At the Gate of the Sun, Bagdad, in olden time.</p><div class="panel poem">${POEM.map(([w, t]) => `<p class="who">${w}</p><p>${t.split('<br>').map(l => `<span class="ln">${l}</span>`).join('')}</p>`).join('')}</div><p class="dim small">Edited.</p>`,
     [{ label: 'Back to the title', primary: true, onClick: titleScreen }]);
 }
 
