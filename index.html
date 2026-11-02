@@ -77,7 +77,7 @@ body{margin:0;background-color:var(--paper);background-image:radial-gradient(rgb
 .tc.on{visibility:visible}
 .anim{animation:pop .22s ease-out}
 @keyframes pop{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
-#choices{display:flex;flex-direction:column;gap:9px;transition:opacity .3s}
+#choices{display:flex;flex-direction:column;gap:9px;transition:opacity .45s ease}
 #choices.wait{opacity:0;pointer-events:none}
 #choices button{font:inherit;font-size:20px;line-height:1.12;text-align:left;color:var(--navy);background:var(--card);border:2.5px solid var(--navy);border-radius:14px;padding:8px 13px;cursor:pointer;display:flex;gap:11px;align-items:center;box-shadow:3px 3px 0 var(--navy);transition:transform .08s,box-shadow .08s;touch-action:manipulation}
 #choices button .k{flex:none;display:grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--yellow);border:2px solid var(--navy);font-family:var(--pix);font-size:13px;color:var(--navy)}
@@ -215,7 +215,7 @@ let g = cv.getContext('2d');
 const W = 240, H = 180;
 g.imageSmoothingEnabled = false;
 const reduceMotion = (() => { try { return matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { return false; } })();
-let DAY_MS = 1500;
+let DAY_MS = 1800;
 
 const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
@@ -794,11 +794,13 @@ function typeEl(el, voice, onDone) {
     if (/[a-z0-9]/i.test(c) && /[\s"'(—-]/.test(prev)) { let w = ''; for (let k = i; k < Math.min(chars.length, i + 14); k++) { const ch = chars[k].textContent; if (/\s/.test(ch)) break; w += ch; } SND.blip(voice, c.charCodeAt(0) + w.length * 3, w.includes('?'), w.replace(/[^a-z]/gi, '').length); }
     i++;
     const nx = i < chars.length ? chars[i].textContent : ' ';
-    t.id = setTimeout(step, /[.!?]/.test(c) && /\s/.test(nx) ? 220 : /[,;:]/.test(c) ? 90 : c === '—' ? 120 : 16);
+    t.id = setTimeout(step, /[.!?]/.test(c) && /\s/.test(nx) ? 300 : /[,;:]/.test(c) ? 120 : c === '—' ? 160 : 20);
   };
   typer = t; t.id = setTimeout(step, 80);
 }
+let screenTok = 0;
 function screen(html, buttons, opts = {}) {
+  const tok = ++screenTok;
   stopTyping();
   textEl.innerHTML = qfix(subNames(html));
   choicesEl.innerHTML = '';
@@ -821,7 +823,7 @@ function screen(html, buttons, opts = {}) {
   const tws = [...textEl.querySelectorAll('.tw')];
   if (tws.length && !reduceMotion) {
     if (opts.gate !== false) choicesEl.classList.add('wait');
-    const run = k => { if (k >= tws.length) { choicesEl.classList.remove('wait'); return; } typeEl(tws[k], tws[k].dataset.voice || opts.type || 'narrator', () => run(k + 1)); };
+    const run = k => { if (tok !== screenTok) return; if (k >= tws.length) { setTimeout(() => { if (tok === screenTok) choicesEl.classList.remove('wait'); }, 550); return; } typeEl(tws[k], tws[k].dataset.voice || opts.type || 'narrator', () => setTimeout(() => run(k + 1), 260)); };
     run(0);
   }
   const inp = textEl.querySelector('input.txt');
@@ -896,7 +898,7 @@ function beat(items, then) {
   else if (first && first.who) emote(first.who, '!');
   else emote(pick(['p0', 'goat', 'c0']), '!');
   sfx.pop();
-  setTimeout(() => runQueue(items, then), reduceMotion ? 60 : 850);
+  setTimeout(() => runQueue(items, then), reduceMotion ? 60 : 1150);
 }
 
 
@@ -2241,7 +2243,7 @@ function travelDay() {
   if (res.items.length || res.arrived) {
     travelling = false; scene.moving = false;
     const then = () => { if (!leader().alive) return gameOver(); if (res.arrived) { S.segDone = 0; return arriveAt(res.to); } travelScreen(); };
-    if (res.items.length) beat(res.items, then); else setTimeout(then, reduceMotion ? 0 : 500);
+    if (res.items.length) beat(res.items, then); else setTimeout(then, reduceMotion ? 0 : 900);
   }
 }
 function stuckScreen() {
