@@ -2,7 +2,7 @@
 <html lang="en"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>The Samarkand Trail</title>
+<title>The Golden Road to Samarkand</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -48,6 +48,8 @@ body{margin:0;background-color:var(--paper);background-image:radial-gradient(rgb
 #hud .warn{color:#FFA3CB}
 #text{min-height:3em;overflow-wrap:anywhere}
 #text p{margin:0 0 .55em}
+#text h1.gold{font-size:clamp(32px,8.6vw,46px)}
+.poem p{margin:0 0 .15em!important;font-size:16.5px;line-height:1.3}.poem .ln{display:block;padding-left:1.1em;text-indent:-1.1em}.poem .who{font-family:var(--pix);font-size:10px;letter-spacing:.05em;text-transform:uppercase;color:var(--blue);margin:.9em 0 .25em!important}.poem .stage{font-style:italic;color:#6b6a99;font-size:16px}
 #text h1{font-family:var(--display);font-weight:400;font-size:clamp(38px,10.5vw,56px);line-height:.92;margin:.08em 0 .22em;color:var(--pink);text-shadow:-3px -2px 0 rgba(31,127,208,.85);text-wrap:balance}
 #text h2{font-family:var(--display);font-weight:400;font-size:26px;line-height:1;margin:.1em 0 .4em;color:var(--pink);text-shadow:-2px -1.5px 0 rgba(31,127,208,.75);text-wrap:balance}
 #text h3{font-family:var(--display);font-weight:400;font-size:19px;margin:.6em 0 .3em;color:var(--blue)}
@@ -2039,9 +2041,10 @@ function titleScreen() {
   const hasSave = saved && saved.v === 3 && saved.party && saved.party.length && saved.party[0].alive;
   const b = [{ label: 'Quick start', sub: 'name yourself and go. We pack for you.', primary: true, onClick: () => { sfx.title(); quickStart(); } }, { label: 'The Delhi road', sub: 'a different crew, over the Khyber and the Hindu Kush', onClick: () => { sfx.title(); quickStartD(); } }, { label: 'Clavijo’s road', sub: 'new! from Constantinople with the Castilian embassy', onClick: () => { sfx.title(); quickStartC(); } }, { label: 'Start a new journey', sub: 'from Tabriz, choosing everything yourself', onClick: () => { sfx.title(); occupationScreen(); } }];
   if (hasSave) b.push({ label: `Continue ${esc(saved.party[0].name)}’s journey`, sub: `${dateStr(saved.day)} · ${saved.atNode ? 'at ' + esc(placeName(saved.segFrom)) : 'on the road'}`, onClick: () => { S = saved; resumeScreen(); } });
+  b.push({ label: 'The poem', sub: 'where the name comes from', onClick: poemScreen });
   b.push({ label: 'How to play', onClick: () => learnScreen(0) });
   b.push({ label: 'Top Ten travelers', onClick: () => topTenScreen() });
-  screen(`<div class="eyebrow">Tabriz to Samarkand · 1404</div><h1>The Samarkand Trail</h1><p class="big">Five travelers, a few camels and one goat set out for the greatest feast on earth.</p><p class="dim">Keep everyone alive if you can. The goat will manage.</p>`, b);
+  screen(`<div class="eyebrow">1404 · three roads, one feast</div><h1 class="gold">The Golden Road to Samarkand</h1><p class="big">Five travelers, a few camels and one goat set out for the greatest feast on earth.</p><p class="dim">Keep everyone alive if you can. The goat will manage.</p>`, b);
 }
 const LEARN = [
   ['The big feast', 'It’s 1404. Timur, conqueror of half the known world, has come home to Samarkand and is throwing a feast for everyone. Ambassadors are coming from Spain, Egypt and China. Every guest brings Timur a gift. The Egyptians are bringing a giraffe.<br><br>You’re going too. All you have to do is walk there from Tabriz, about 400 farsakhs, and find a gift on the way. A farsakh is how far a loaded camel walks in an hour.'],
@@ -4014,6 +4017,26 @@ function mapScreenC() {
 }
 
 const DAMGHAN_T = N.damghan.talk[0], DAMGHAN_C = ['A Persian falconer', 'Hawks, falcons, eagles. A beautiful falcon escaped near here yesterday. Someone very foreign was very upset.'];
+
+
+/* ---------- the poem behind the title ---------- */
+const POEM = [
+  ['The Merchants', 'Away, for we are ready to a man!<br>Our camels sniff the evening and are glad.<br>Lead on, O Master of the Caravan:<br>Lead on the Merchant-Princes of Bagdad.'],
+  ['The Pilgrims', 'We are the Pilgrims, master; we shall go<br>Always a little further: it may be<br>Beyond that last blue mountain barred with snow,<br>Across that angry or that glimmering sea,<br>White on a throne or guarded in a cave<br>There lives a prophet who can understand<br>Why men were born: but surely we are brave,<br>Who make the Golden Journey to Samarkand.'],
+  ['A Pilgrim with a beautiful voice', 'Sweet to ride forth at evening from the wells<br>When shadows pass gigantic on the sand,<br>And softly through the silence beat the bells<br>Along the Golden Road to Samarkand.'],
+  ['A Merchant', 'We travel not for trafficking alone:<br>By hotter winds our fiery hearts are fanned:<br>For lust of knowing what should not be known<br>We make the Golden Journey to Samarkand.'],
+  ['The Master of the Caravan', 'Open the gate, O watchman of the night!'],
+  ['The Watchman', 'Ho, travellers, I open. For what land<br>Leave you the dim-moon city of delight?'],
+  ['The Merchants, with a shout', 'We make the Golden Journey to Samarkand.'],
+  ['The Watchman, to the women', 'What would ye, ladies? It was ever thus.<br>Men are unwise and curiously planned.'],
+  ['A Woman', 'They have their dreams, and do not think of us.'],
+  ['Voices of the caravan, in the distance', 'We make the Golden Journey to Samarkand.'],
+];
+function poemScreen() {
+  setScene('title');
+  screen(`<div class="eyebrow">James Elroy Flecker, 1913</div><h2>The Golden Journey to Samarkand</h2><p class="stage poem">At the Gate of the Sun, Bagdad, in olden time.</p><div class="panel poem">${POEM.map(([w, t]) => `<p class="who">${w}</p><p>${t.split('<br>').map(l => `<span class="ln">${l}</span>`).join('')}</p>`).join('')}</div><p class="dim small">From the poem’s epilogue, shortened. Flecker wrote it a century ago about a caravan leaving Baghdad. We left out a passage that mocks Jewish merchants and a line about “Syrian boys,” because this game does not need them.</p>`,
+    [{ label: 'Back to the title', primary: true, onClick: titleScreen }]);
+}
 
 /* ---------- boot ---------- */
 window.__trail = { buzk: () => buzkGame({ onDone: items => runQueue(items, menuScreen) }), show: (k, id) => { setScene('show', { kind: k, node: id || S.segFrom }); }, fire: () => setScene('fire'), reunion: () => setScene('reunion', { a: LOOKS[2], b: GLOOK, prop: 'ring' }), state: () => S, setDay: ms => { DAY_MS = ms; }, scene: () => scene, hunt: () => hunt, raft: () => raft, huntEnd, raftEnd, jump: id => { travelling = false; arriveAt(id); }, raftTest: night => raftGame({ night, onDone: items => crossDone(items) }), emote, cue: n => { forcedCue = n; }, snd: SND, amb: t => ambSpawnType(t), haggle: () => haggleGame(S.segFrom, m => storeScreen(S.segFrom, menuScreen, m)) };
