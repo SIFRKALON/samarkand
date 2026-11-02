@@ -321,21 +321,22 @@ const SND = (() => {
   const MARCH = parse('5 . 5 5 8 . 5 . | 6 . 5 . 4 . 3 . | 4 . 4 4 7 . 4 . | 3 . 2 . 1 h h .');
   const trail6 = { bar: 6, mel: TRAIL, bass: 'x..5..', arp: '1.2.3.', drums: { doum: 'x.....', tek: '...x.o', shaker: '.oo.oo' } };
   const CUES = {
-    title: { bpm: 92, bar: 8, key: 74, mode: 'hij', ch: [1, 1, 4, 4, 7, 7, 1, 1], mel: TITLE, lead: [['box', 0, 1]], bass: 'x.......', arp: '..1.2.3.', arpV: 0.3, drums: { doum: 'o...o...', tek: '...o..o.' }, pad: 0.6, bell: 4 },
-    plateau: { ...trail6, bpm: 150, key: 74, mode: 'mix', ch: [1, 7, 4, 1, 1, 7, 4, 5], lead: [['ney', 0, 1]], bell: 4 },
-    khorasan: { ...trail6, bpm: 150, key: 74, mode: 'mix', ch: [1, 7, 4, 1, 1, 7, 4, 5], lead: [['pluck', 0, 1], ['box', 12, 0.35]], bell: 4 },
-    desert: { ...trail6, bpm: 128, key: 74, mode: 'hij', ch: [1, 7, 4, 1, 1, 7, 4, 1], lead: [['ney', 0, 1]], arp: '....1.', drums: { doum: 'x.....', tek: '...o..' }, drone: 1, skip: 2, bell: 2 },
-    mountain: { ...trail6, bpm: 124, key: 74, mode: 'dor', ch: [1, 7, 4, 1, 1, 7, 4, 5], lead: [['box', 0, 0.9]], arp: '1..3..', drums: { doum: 'o.....', shaker: '...o..' }, pad: 0.7 },
-    oasis: { ...trail6, bpm: 162, key: 74, mode: 'maj', ch: [1, 4, 4, 1, 1, 2, 4, 5], lead: [['pluck', 0, 1], ['box', 12, 0.4]], arp: '123232', arpV: 0.3, bell: 4 },
+    title: { bpm: 84, bar: 8, key: 74, mode: 'hij', ch: [1, 1, 4, 4, 7, 7, 1, 1], mel: TITLE, lead: [['box', 0, 1]], bass: 'x.......', arp: '..1.2.3.', arpV: 0.3, drums: { doum: 'o...o...', tek: '...o..o.' }, pad: 0.6, bell: 4 },
+    plateau: { ...trail6, bpm: 128, drone: 0.5, key: 74, mode: 'dor', ch: [1, 7, 4, 1, 1, 7, 4, 5], lead: [['ney', 0, 1]], bell: 4 },
+    khorasan: { ...trail6, bpm: 128, drone: 0.5, key: 74, mode: 'hij', ch: [1, 7, 4, 1, 1, 7, 4, 5], lead: [['pluck', 0, 1], ['box', 12, 0.35]], bell: 4 },
+    desert: { ...trail6, bpm: 110, key: 74, mode: 'hij', ch: [1, 7, 4, 1, 1, 7, 4, 1], lead: [['ney', 0, 1]], arp: '....1.', drums: { doum: 'x.....', tek: '...o..' }, drone: 1, skip: 2, bell: 2 },
+    mountain: { ...trail6, bpm: 108, key: 74, mode: 'dor', ch: [1, 7, 4, 1, 1, 7, 4, 5], lead: [['box', 0, 0.9]], arp: '1..3..', drums: { doum: 'o.....', shaker: '...o..' }, pad: 0.7 },
+    oasis: { ...trail6, bpm: 138, drone: 0.4, key: 74, mode: 'mix', ch: [1, 4, 4, 1, 1, 2, 4, 5], lead: [['pluck', 0, 1], ['box', 12, 0.4]], arp: '123232', arpV: 0.3, bell: 4 },
     army: { bpm: 112, bar: 8, key: 74, mode: 'mix', ch: [1, 1, 7, 1], mel: MARCH, lead: [['pluck', 0, 1], ['ney', -12, 0.5]], bass: 'x...x...', drums: { boom: 'x...x...', doum: '..x...x.', tek: '.....xxx' }, stabs: 'x...x...' },
-    town: { bpm: 104, bar: 8, key: 69, mode: 'maj', ch: [1, 4, 5, 1, 1, 4, 5, 1], mel: TOWN, lead: [['box', 12, 0.9], ['pluck', 0, 0.5]], bass: 'x...5...', arp: '..1...2.', arpIns: 'box', arpOct: 0, arpV: 0.25, drums: { doum: 'x..x....', tek: '..x...xo', jingle: '....o...' } },
-    store: { bpm: 116, bar: 8, key: 69, mode: 'hij', ch: [1, 4, 7, 1, 1, 4, 7, 1], mel: TOWN, lead: [['pluck', 0, 1], ['box', 12, 0.4]], bass: 'x.5.x.5.', drums: { doum: 'x..x..x.', tek: '.x...x.x', jingle: '..o...o.' } },
-    river: { bpm: 140, bar: 6, key: 65, mode: 'maj', ch: [1, 6, 4, 5, 1, 6, 4, 5], mel: RIVER, lead: [['ney', 12, 1]], bass: 'x.....', arp: '123432', arpV: 0.32, drums: { shaker: '..o..o' }, pad: 0.5 },
+    town: { bpm: 92, bar: 8, key: 69, mode: 'mix', ch: [1, 4, 5, 1, 1, 4, 5, 1], mel: TOWN, lead: [['box', 12, 0.9], ['pluck', 0, 0.5]], bass: 'x...5...', arp: '..1...2.', arpIns: 'box', arpOct: 0, arpV: 0.25, drums: { doum: 'x..x....', tek: '..x...xo', jingle: '....o...' } },
+    store: { bpm: 104, bar: 8, key: 69, mode: 'hij', ch: [1, 4, 7, 1, 1, 4, 7, 1], mel: TOWN, lead: [['pluck', 0, 1], ['box', 12, 0.4]], bass: 'x.5.x.5.', drums: { doum: 'x..x..x.', tek: '.x...x.x', jingle: '..o...o.' } },
+    river: { bpm: 120, bar: 6, key: 65, mode: 'mix', ch: [1, 6, 4, 5, 1, 6, 4, 5], mel: RIVER, lead: [['ney', 12, 1]], bass: 'x.....', arp: '123432', arpV: 0.32, drums: { shaker: '..o..o' }, pad: 0.5 },
     hunt: { bpm: 132, bar: 8, key: 67, mode: 'maj', ch: [1, 1, 4, 5], mel: HUNT, lead: [['box', 12, 0.9], ['pluck', 0, 0.6]], bass: 'x.5.x.5.', drums: { doum: 'x...x...', tek: '..x...x.', shaker: 'oooooooo' } },
     raft: { bpm: 150, bar: 8, key: 62, mode: 'hij', ch: [1, 7, 6, 1], mel: RAFT, lead: [['pluck', 12, 1]], bass: 'xoxoxoxo', drums: { doum: 'x..xx.x.', tek: '..x..x.x', shaker: 'oooooooo' } },
     grave: { bpm: 70, bar: 8, key: 50, mode: 'hmin', ch: [1, 1, 1, 5], mel: FUNERAL, lead: [['tuba', 0, 1], ['box', 24, 0.28]], bass: 'x...5...', drums: { boom: 'o...o...' }, pad: 0.35 },
     sad: { bpm: 64, bar: 8, key: 62, mode: 'min', ch: [1, 6, 4, 5], mel: GRAVE, lead: [['box', 12, 0.8]], pad: 0.6, bell: 4 },
     feast: { bpm: 118, bar: 8, key: 74, mode: 'maj', ch: [1, 1, 4, 4, 6, 5, 1, 1], mel: TITLE, lead: [['box', 0, 1], ['ney', -12, 0.6]], bass: 'x..5x.5.', arp: '1.2.3.4.', arpV: 0.25, drums: { doum: 'x..xx...', tek: '..x...xx', jingle: '.o.o.o.o' }, pad: 0.6, bell: 2 },
+    night: { bpm: 76, bar: 8, key: 62, mode: 'hij', ch: [1, 1, 7, 1, 1, 1, 4, 1], mel: TITLE, lead: [['ney', 0, 0.75]], bass: 'x.......', drums: { doum: 'o.......' }, drone: 0.8, pad: 0.45, bell: 4 },
     late: { bpm: 72, bar: 8, key: 74, mode: 'min', ch: [1, 1, 4, 4, 7, 7, 1, 1], mel: TITLE, lead: [['box', 0, 0.8]], bass: 'x.......', pad: 0.5 },
   };
   function playLead(ins, t, m, v, dur) { if (ins === 'tuba') I.tuba(t, m, v, Math.max(0.15, dur * 0.9)); else if (ins === 'ney') I.ney(t, m, v, Math.max(0.12, dur * 0.92)); else if (ins === 'pluck') I.pluck(t, m, v); else I.box(t, m, v); }
@@ -1746,9 +1747,13 @@ function curRegion() { if (scene.region) return scene.region; if (!S) return 'pl
 function poplarG(x, by, h) { const au = S && [8, 9, 10].includes(monthOf(S.day)), c = au ? '#F2B530' : P.leaf, cl = au ? '#FFE07A' : P.leafL; R(P.woodD, x + 1, by - 3, 1, 3); R(c, x, by - h, 3, h - 3); R(c, x + 1, by - h - 2, 1, 2); R(cl, x, by - h + 2, 1, h - 6); }
 function drawBackground(region, w, scroll, hz = 112) {
   const p = REG[region], t = scene.t;
-  sky(w && w.precip ? SKYW[w.precip] : (w && w.temp === 5 ? SKYW.scorch : p.sky), hz);
-  if (!w || !w.precip) sunFace(164, Math.min(24, hz - 34), 8, t, w && w.temp === 5);
+  const base = w && w.precip ? SKYW[w.precip] : (w && w.temp === 5 ? SKYW.scorch : p.sky), tod = todActive() ? todState(base) : null;
+  TOD.hz = hz;
+  sky(tod ? tod.pal : base, hz);
+  if (tod) skyLights(tod, hz, t, w); else if (!w || !w.precip) sunFace(164, Math.min(24, hz - 34), 8, t, w && w.temp === 5);
+  if (tod && tod.night > 0.1) { g.save(); g.globalAlpha = 1 - tod.night * 0.75; }
   clouds(scroll, t, w && w.precip ? 6 : 3, w && w.precip && w.precip !== 'dust', Math.min(40, hz - 50));
+  if (tod && tod.night > 0.1) g.restore();
   if (region !== 'desert') {
     const base = region === 'mountain' ? hz - 10 : hz - 16, amp = region === 'mountain' ? 52 : region === 'oasis' ? 14 : 24;
     for (let x = 0; x < W; x++) { const h = Math.round(ridge(x + scroll * 0.15, base, amp, 1.3)); R(p.far, x, h, 1, hz - h); px(p.farHi, x, h); if (region === 'mountain' && h < hz - 44) R(P.white, x, h, 1, Math.min(5, hz - 44 - h + 1)); }
@@ -1978,8 +1983,8 @@ function musicCue() {
   switch (scene.mode) {
     case 'title': return 'title';
     case 'store': case 'haggle': return 'store';
-    case 'walk': return S && S.army ? 'army' : curRegion();
-    case 'node': return N[scene.node] && N[scene.node].army ? 'army' : 'town';
+    case 'walk': return S && S.army ? 'army' : todNight() > 0.6 ? 'night' : curRegion();
+    case 'node': return N[scene.node] && N[scene.node].army ? 'army' : todNight() > 0.6 ? 'night' : 'town';
     case 'river': return 'river';
     case 'hunt': return 'hunt';
     case 'raft': return 'raft';
@@ -1995,14 +2000,15 @@ function musicCue() {
 function loop(ts) {
   const dt = Math.min(0.05, (ts - (lastTs || ts)) / 1000); lastTs = ts;
   scene.t += dt;
+  if (todActive()) TOD.t = (TOD.t + dt / TOD.cycle) % 1;
   try {
     ANCH = {};
     if (scene.mode === 'walk') {
       if (scene.moving && !reduceMotion) scene.scroll += dt * 18;
       if (travelling) { dayAcc += dt * 1000; if (dayAcc >= DAY_MS) { dayAcc = 0; travelDay(); } }
-      ambTick(dt, curRegion(), scene.moving); drawWalk(); autoEmote(dt);
-    } else if (scene.mode === 'node') { drawNode(); autoEmote(dt); }
-    else if (scene.mode === 'river') { drawRiver(); autoEmote(dt * 0.6); }
+      ambTick(dt, curRegion(), scene.moving); drawWalk(); todPost(); autoEmote(dt);
+    } else if (scene.mode === 'node') { drawNode(); todPost(); autoEmote(dt); }
+    else if (scene.mode === 'river') { drawRiver(); todPost(); autoEmote(dt * 0.6); }
     else if (scene.mode === 'title') drawTitle();
     else if (scene.mode === 'grave') drawGrave();
     else if (scene.mode === 'store') drawStore();
@@ -4023,6 +4029,11 @@ const DAMGHAN_T = N.damghan.talk[0], DAMGHAN_C = ['A Persian falconer', 'Hawks, 
 const POEM = [
   ['The Merchants', 'Away, for we are ready to a man!<br>Our camels sniff the evening and are glad.<br>Lead on, O Master of the Caravan:<br>Lead on the Merchant-Princes of Bagdad.'],
   ['The Pilgrims', 'We are the Pilgrims, master; we shall go<br>Always a little further: it may be<br>Beyond that last blue mountain barred with snow,<br>Across that angry or that glimmering sea,<br>White on a throne or guarded in a cave<br>There lives a prophet who can understand<br>Why men were born: but surely we are brave,<br>Who make the Golden Journey to Samarkand.'],
+  ['The Chief Merchant', 'We gnaw the nail of hurry. Master, away!'],
+  ['One of the Women', 'O turn your eyes to where your children stand.<br>Is not Bagdad the beautiful? O stay!'],
+  ['The Merchants, in chorus', 'We take the Golden Road to Samarkand.'],
+  ['An Old Man', 'Have you not girls and garlands in your homes,<br>Eunuchs and Syrian boys at your command?<br>Seek not excess: God hateth him who roams!'],
+  ['The Merchants, in chorus', 'We take the Golden Road to Samarkand.'],
   ['A Pilgrim with a beautiful voice', 'Sweet to ride forth at evening from the wells<br>When shadows pass gigantic on the sand,<br>And softly through the silence beat the bells<br>Along the Golden Road to Samarkand.'],
   ['A Merchant', 'We travel not for trafficking alone:<br>By hotter winds our fiery hearts are fanned:<br>For lust of knowing what should not be known<br>We make the Golden Journey to Samarkand.'],
   ['The Master of the Caravan', 'Open the gate, O watchman of the night!'],
@@ -4034,12 +4045,52 @@ const POEM = [
 ];
 function poemScreen() {
   setScene('title');
-  screen(`<div class="eyebrow">James Elroy Flecker, 1913</div><h2>The Golden Journey to Samarkand</h2><p class="stage poem">At the Gate of the Sun, Bagdad, in olden time.</p><div class="panel poem">${POEM.map(([w, t]) => `<p class="who">${w}</p><p>${t.split('<br>').map(l => `<span class="ln">${l}</span>`).join('')}</p>`).join('')}</div><p class="dim small">From the poem’s epilogue, shortened. Flecker wrote it a century ago about a caravan leaving Baghdad. We left out a passage that mocks Jewish merchants and a line about “Syrian boys,” because this game does not need them.</p>`,
+  screen(`<div class="eyebrow">James Elroy Flecker, 1913</div><h2>The Golden Journey to Samarkand</h2><p class="stage poem">At the Gate of the Sun, Bagdad, in olden time.</p><div class="panel poem">${POEM.map(([w, t]) => `<p class="who">${w}</p><p>${t.split('<br>').map(l => `<span class="ln">${l}</span>`).join('')}</p>`).join('')}</div><p class="dim small">From the poem’s epilogue, shortened. Flecker wrote it a century ago about a caravan leaving Baghdad. We left out a passage that mocks Jewish merchants, because this game does not need it. The Old Man’s list of household comforts, enslaved people among them, is how Flecker imagined Baghdad.</p>`,
     [{ label: 'Back to the title', primary: true, onClick: titleScreen }]);
 }
 
+
+/* ---------- time of day: long golden evenings, deep blue nights ---------- */
+const TOD = { t: 0.16, cycle: 96, hz: 112 };
+const TODK = [
+  [0.00, ['#6E78CF', '#9C8FD6', '#E6A2C0', '#FFC9AE', '#FFE3C0'], '#E8A8C8', 0.22, 0.35],
+  [0.08, null, '#FFFFFF', 0, 0],
+  [0.40, null, '#FFFFFF', 0, 0],
+  [0.48, ['#86B8F2', '#AECCF4', '#FFDCAE', '#FFCB8E', '#FFB872'], '#FFD49A', 0.2, 0],
+  [0.56, ['#4D4296', '#8A55A8', '#D9679C', '#FF8F7A', '#FFB86B'], '#FFA27E', 0.32, 0.15],
+  [0.64, ['#2B2A6E', '#4A3A8E', '#8A4FA0', '#C9649A', '#F08A8A'], '#A786D6', 0.4, 0.55],
+  [0.71, ['#121640', '#1A1F52', '#232A64', '#2E3478', '#3B3F88'], '#5560B8', 0.5, 1],
+  [0.92, ['#121640', '#1A1F52', '#232A64', '#2E3478', '#3B3F88'], '#5560B8', 0.5, 1],
+  [1.00, ['#6E78CF', '#9C8FD6', '#E6A2C0', '#FFC9AE', '#FFE3C0'], '#E8A8C8', 0.22, 0.35],
+];
+const todActive = () => !!S && ['walk', 'node', 'river'].includes(scene.mode);
+const hexRGB = h => [parseInt(h.slice(1, 3), 16), parseInt(h.slice(3, 5), 16), parseInt(h.slice(5, 7), 16)];
+const mixHex = (a, b, f) => { const A = hexRGB(a), B = hexRGB(b); return '#' + A.map((v, i) => Math.round(v + (B[i] - v) * f).toString(16).padStart(2, '0')).join(''); };
+function todKeys() { const t = TOD.t; let i = 0; while (i < TODK.length - 2 && TODK[i + 1][0] <= t) i++; const a = TODK[i], b = TODK[i + 1], f = (t - a[0]) / Math.max(1e-6, b[0] - a[0]); return [a, b, f * f * (3 - 2 * f)]; }
+function todState(base) {
+  const [a, b, f] = todKeys(), pa = a[1] || base, pb = b[1] || base;
+  return { pal: base.map((_, i) => mixHex(pa[Math.min(i, pa.length - 1)], pb[Math.min(i, pb.length - 1)], f)), grade: mixHex(a[2], b[2], f), ga: a[3] + (b[3] - a[3]) * f, night: a[4] + (b[4] - a[4]) * f };
+}
+const todNight = () => todActive() ? todState(['#000000'])['night'] : 0;
+function skyLights(tod, hz, t, w) {
+  if (tod.night > 0.05) { g.save(); g.globalAlpha = Math.min(1, tod.night * 1.2); for (let i = 0; i < 46; i++) { const x = hash(i * 7 + 1) * W | 0, y = hash(i * 13 + 2) * (hz - 30) | 0; px(Math.sin(t * 2 + i) > 0.6 ? P.white : '#C9CCFF', x, y); } g.restore(); }
+  if (w && w.precip) return;
+  const st = TOD.t, top = Math.min(24, hz - 34);
+  if (st < 0.7) { const u = st / 0.7, x = 14 + u * 212, y = hz - 6 - Math.sin(u * Math.PI) * (hz - 6 - top); if (u > 0.68) { g.save(); g.globalAlpha = 0.28; disc(x, y, 18, '#FFB36B'); g.globalAlpha = 0.35; disc(x, y, 12, '#FFD08A'); g.restore(); } sunFace(Math.round(x), Math.round(y), 8, t, w && w.temp === 5); }
+  const mt = (st + 0.36) % 1; if (mt < 0.5 && tod.night > 0.2) { const u = mt / 0.5, x = 20 + u * 200, y = hz - 8 - Math.sin(u * Math.PI) * (hz - 8 - top - 4); g.save(); g.globalAlpha = Math.min(1, tod.night * 1.4); disc(x, y, 7, '#FFF3C4'); disc(x + 3, y - 2, 6, tod.pal[0]); g.restore(); }
+}
+function todPost() {
+  const tod = todState(['#000000']); if (tod.ga < 0.01) return;
+  const y0 = Math.max(0, TOD.hz - 30);
+  g.save(); g.globalCompositeOperation = 'multiply'; g.fillStyle = tod.grade; g.globalAlpha = tod.ga * 0.45; g.fillRect(0, 0, W, y0); g.globalAlpha = tod.ga; g.fillRect(0, y0, W, H - y0); g.restore();
+  if (tod.night > 0.3) {
+    const a = ANCH.p0 || ANCH.goat; if (a) { g.save(); g.globalCompositeOperation = 'screen'; const gr = g.createRadialGradient(a[0], a[1] + 16, 4, a[0], a[1] + 16, 64); gr.addColorStop(0, `rgba(255,190,110,${0.55 * tod.night})`); gr.addColorStop(1, 'rgba(255,190,110,0)'); g.fillStyle = gr; g.fillRect(0, 0, W, H); g.restore(); }
+    if (curRegion() === 'oasis' || curRegion() === 'plateau') { g.save(); g.globalAlpha = tod.night; for (let i = 0; i < 12; i++) { if (Math.sin(scene.t * 3 + i * 2.1) < 0.2) continue; px('#FFF29A', (hash(i * 5) * W + Math.sin(scene.t + i) * 6 + W) % W, TOD.hz + 8 + hash(i * 9) * 50); } g.restore(); }
+  }
+}
+
 /* ---------- boot ---------- */
-window.__trail = { buzk: () => buzkGame({ onDone: items => runQueue(items, menuScreen) }), show: (k, id) => { setScene('show', { kind: k, node: id || S.segFrom }); }, fire: () => setScene('fire'), reunion: () => setScene('reunion', { a: LOOKS[2], b: GLOOK, prop: 'ring' }), state: () => S, setDay: ms => { DAY_MS = ms; }, scene: () => scene, hunt: () => hunt, raft: () => raft, huntEnd, raftEnd, jump: id => { travelling = false; arriveAt(id); }, raftTest: night => raftGame({ night, onDone: items => crossDone(items) }), emote, cue: n => { forcedCue = n; }, snd: SND, amb: t => ambSpawnType(t), haggle: () => haggleGame(S.segFrom, m => storeScreen(S.segFrom, menuScreen, m)) };
+window.__trail = { tod: v => { TOD.t = v; }, buzk: () => buzkGame({ onDone: items => runQueue(items, menuScreen) }), show: (k, id) => { setScene('show', { kind: k, node: id || S.segFrom }); }, fire: () => setScene('fire'), reunion: () => setScene('reunion', { a: LOOKS[2], b: GLOOK, prop: 'ring' }), state: () => S, setDay: ms => { DAY_MS = ms; }, scene: () => scene, hunt: () => hunt, raft: () => raft, huntEnd, raftEnd, jump: id => { travelling = false; arriveAt(id); }, raftTest: night => raftGame({ night, onDone: items => crossDone(items) }), emote, cue: n => { forcedCue = n; }, snd: SND, amb: t => ambSpawnType(t), haggle: () => haggleGame(S.segFrom, m => storeScreen(S.segFrom, menuScreen, m)) };
 function ambSpawnType(type) { AMB.list = []; for (let i = 0; i < 40 && !AMB.list.some(c => c.type === type); i++) { AMB.list = []; ambSpawn(curRegion(), true); } }
 function start(data) {
   if (data && data.S && data.S.v === 3) S = data.S;
