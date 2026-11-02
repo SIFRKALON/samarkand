@@ -444,14 +444,12 @@ const SND = (() => {
       const t = ac.currentTime + 0.01;
       if (voice === 'goat') return bleat(t, 0.9 + (code % 5) * 0.05);
       if (voice === 'camel') return grumble(t);
-      const v = VOICE[voice] || VOICE.merchant, PENTA = [0, 2, 4, 7, 9, 12], base = 60 + ((key - 60) % 12 + 12) % 12, n = Math.max(1, Math.min(v.max, Math.ceil(len / 3)));
+      const v = VOICE[voice] || VOICE.merchant, HIJ = [0, 1, 4, 5, 7, 8, 10, 12], base = 57 + ((key - 60) % 12 + 12) % 12, n = Math.max(1, Math.min(2, Math.ceil(len / 5)));
       for (let j = 0; j < n; j++) {
-        let m = base + v.off + PENTA[(code * 3 + j * 2) % PENTA.length]; if (q && j === n - 1) m += 5;
-        const f = mtof(m), tt = t + j * v.gap;
-        tone(tt, { f, to: f * (q && j === n - 1 ? 1.25 : v.glide), glide: v.d * 0.8, type: v.type, peak: v.peak, a: v.a, d: v.d, cut: v.cut, send: 0.1, fx: true });
-        if (v.shimmer) tone(tt, { f: f * 2.005, peak: 0.016, a: 0.002, d: 0.05, send: 0.3, fx: true });
-        else if (v.gruff) tone(tt, { f, type: 'square', peak: 0.011, a: 0.006, d: v.d, cut: 700, fx: true });
-        else tone(tt, { f: f * 2, peak: 0.009, a: 0.003, d: 0.04, send: 0.05, fx: true });
+        let m = base + v.off + HIJ[(code * 3 + j * 2) % HIJ.length]; if (q && j === n - 1) m += 5;
+        const f = mtof(m), tt = t + j * (v.gap + 0.03), d = Math.max(0.14, v.d * 2.2);
+        tone(tt, { f, to: f * (q && j === n - 1 ? 1.12 : 0.985), glide: d, type: 'triangle', peak: v.peak * 0.75, a: 0.002, d, cut: Math.min(1900, v.cut), send: 0.22, fx: true });
+        tone(tt, { f: f * 2.003, type: 'sine', peak: v.peak * 0.18, a: 0.001, d: d * 0.5, send: 0.3, fx: true });
       }
     },
   };
@@ -1308,7 +1306,7 @@ const EVENTS = [
   { w: c => S.route === 'A' && !S.metClavijo && !S.flags.giraffe && c.month >= 7 ? 1.2 : 0, run: () => { S.flags.giraffe = true; return msg('People along the road keep talking about a giraffe. Nobody you meet has seen it. Everyone knows someone who has.'); } },
   { w: () => S.flags.nasreddin ? 0 : 1, run: () => nasreddinEvent() },
   { w: c => !S.flags.buzkashi && ['khorasan', 'desert', 'oasis'].includes(c.region) ? 1 : 0, run: () => buzkashiEvent() },
-  { w: c => c.rest ? 0.5 : 1.6, run: () => storytellerEvent() },
+  { w: c => c.rest ? 0.4 : 0.8, run: () => storytellerEvent() },
   { w: c => c.region === 'desert' && S.water < S.skins * 0.35 ? (S.flags.khidr ? 3 : 1.2) : 0, run: () => { S.water = S.skins; alive().forEach(m => m.hp = Math.min(100, m.hp + 8)); return msg('A man in a green cloak walks out of the shimmer, smiling as if he knows you. He leads you to a hollow you could swear was not there before, where a spring bubbles up cold and sweet. When you turn to thank him, he is gone.', { title: 'The Green One', sound: 'sparkle' }); } },
   { w: c => c.region === 'desert' && !S.flags.ghulMet ? 1.4 : 0, run: () => { S.flags.ghulMet = true; return ghulEvent(); } },
   { w: () => 1.4, run: () => westCaravanEvent() },
@@ -1337,7 +1335,10 @@ const EVENTS = [
   { w: c => !S.flags.zoroastrian && (c.region === 'plateau' || c.region === 'khorasan') ? 1.3 : 0, run: () => { S.flags.zoroastrian = true; alive().forEach(m => m.hp = Math.min(100, m.hp + 4)); return msg('At the evening halt, an old Zoroastrian from Yazd sits down by your fire carrying a small brass urn. Inside are embers from a fire his people say has burned for a thousand years. He prays toward your flames, quietly, then adds a single ember of his own. All night your fire burns warm and steady and does not smoke. <span class="good">Everyone gains 4 health.</span>', { title: 'The fire from Yazd', scene: { mode: 'fire' } }); } },
 ];
 function rollEvent(c) {
-  if (!chance(c.rest ? 0.12 : 0.2)) return null;
+  if (S.traveled < 12 && !c.rest) return null;
+  if (S.day - (S.lastEvDay || -99) < 3) return null;
+  if (!chance(c.rest ? 0.1 : 0.19)) return null;
+  S.lastEvDay = S.day;
   const ws = EVENTS.map(e => Math.max(0, e.w(c) || 0));
   const t = ws.reduce((a, b) => a + b, 0); if (!t) return null;
   let r = Math.random() * t;
@@ -1348,7 +1349,7 @@ function graveCheck(prev, now) {
   const key = segKey(), out = [];
   const graves = store.get(KEY.graves, null) || SEED_GRAVES;
   for (const gr of graves) {
-    if (gr.seg !== key || gr.run === S.run || S.seenGraves.includes(gr.id)) continue;
+    if (gr.seg !== key || gr.run === S.run || S.seenGraves.includes(gr.id) || S.traveled < 40) continue;
     if (gr.at > prev && gr.at <= now) {
       S.seenGraves.push(gr.id);
       if ((S.flags.gravesShown || 0) >= 2 || !chance(0.5)) continue;
@@ -2060,7 +2061,7 @@ function titleScreen() {
   travelling = false; setScene('title');
   const saved = store.get(KEY.save, null);
   const hasSave = saved && saved.v === 3 && saved.party && saved.party.length && saved.party[0].alive;
-  const b = [{ label: 'Quick start', sub: 'name yourself and go. We pack for you.', primary: true, onClick: () => { sfx.title(); quickStart(); } }, { label: 'The Delhi road', sub: 'a different crew, over the Khyber and the Hindu Kush', onClick: () => { sfx.title(); quickStartD(); } }, { label: 'Clavijo’s road', sub: 'new! from Constantinople with the Castilian embassy', onClick: () => { sfx.title(); quickStartC(); } }, { label: 'Start a new journey', sub: 'from Tabriz, choosing everything yourself', onClick: () => { sfx.title(); occupationScreen(); } }];
+  const b = [{ label: 'Start a new journey', sub: 'from Tabriz, choosing everything yourself', primary: true, onClick: () => { sfx.title(); occupationScreen(); } }, { label: 'Quick start', sub: 'name yourself and go. We pack for you.', onClick: () => { sfx.title(); quickStart(); } }, { label: 'The Delhi road', sub: 'a different crew, over the Khyber and the Hindu Kush', onClick: () => { sfx.title(); quickStartD(); } }, { label: 'Clavijo’s road', sub: 'new! from Constantinople with the Castilian embassy', onClick: () => { sfx.title(); quickStartC(); } }];
   if (hasSave) b.push({ label: `Continue ${esc(saved.party[0].name)}’s journey`, sub: `${dateStr(saved.day)} · ${saved.atNode ? 'at ' + esc(placeName(saved.segFrom)) : 'on the road'}`, onClick: () => { S = saved; resumeScreen(); } });
   b.push({ label: 'The poem', sub: 'where the name comes from', onClick: poemScreen });
   b.push({ label: 'How to play', onClick: () => learnScreen(0) });
