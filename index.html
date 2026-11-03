@@ -983,10 +983,10 @@ function updateHealth(rest, starving, thirsty, region) {
   const t = S.weather.temp;
   for (const m of a) {
     let d = 0;
-    if (!rest) d += S.army ? -2.3 : [0, -1.6, -3, -4.5][S.pace];
+    if (!rest) d += S.army ? -2.3 : [0, -1.45, -2.9, -4.4][S.pace];
     d += [0, 0.3, -1, -2.2][S.rations];
     if (!m.sick && !m.inj) d += 0.2;
-    if (rest) d += (S.segFrom === 'rabat' && S.atNode ? 5 : 3.2) + (has('otabek') ? 1 : 0) + (has('yaqub') ? 1 : 0);
+    if (rest) d += (S.segFrom === 'rabat' && S.atNode ? 5.5 : 3.6) + (has('otabek') ? 1 : 0) + (has('yaqub') ? 1 : 0);
     if (t === 4) d -= 0.4;
     if (t === 5) d -= S.nightDays ? 0.6 : region === 'desert' ? 2.4 : 1.6;
     if (t === 1 && coatsShort) d -= 1.5;
@@ -1004,7 +1004,7 @@ function updateHealth(rest, starving, thirsty, region) {
     m.hp = clamp(m.hp + d, 0, 100);
     if (m.hp < 25 && !m.warned && m.hp > 0) { m.warned = true; deaths.push({ warn: m }); } else if (m.hp > 45) m.warned = false;
     let dead = m.hp <= 0;
-    if (!dead && (m.sick || m.inj) && m.hp < 22 && chance(m.sick === 'plague' ? 0.3 : 0.2)) dead = true;
+    if (!dead && (m.sick || m.inj) && m.hp < 22 && chance(m.sick === 'plague' ? 0.3 : m.sick ? 0.2 : 0.08)) dead = true;
     if (dead && S.flags.blessed) { S.flags.blessed = false; m.hp = 12; m.sick = null; m.inj = null; deaths.push({ saved: m }); continue; }
     if (dead) { const cause = causeOf(m, starving, thirsty, t <= 1 && coatsShort); m.alive = false; m.hp = 0; deaths.push({ m, cause }); }
   }
