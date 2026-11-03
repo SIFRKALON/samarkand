@@ -498,7 +498,7 @@ const CAMEL_FACTS = [
   'A good camel can carry four hundred pounds for a month, live forty years, and remember every person who was ever rude to it.',
   'Turkmen breeders cross two-humped and one-humped camels. The calf, a nar, is bigger and stronger than either parent. Gulnor is very proud of this.',
 ];
-const PRICES = { camels: 40, food: 0.15, coats: 10, bundles: 2, saddles: 10, skins: 4 };
+const PRICES = { camels: 46, food: 0.18, coats: 12, bundles: 2.5, saddles: 12, skins: 5 };
 const TRADERS = ['A Turkmen herder','An Armenian wine seller','A dyer from Yazd','A cloth merchant from Herat','A Kipchak horseman','A melon farmer','A pilgrim on his way home','A Genoese merchant who is very far from Genoa','A dervish with strong opinions','A Chinese envoy’s cook'];
 /* trade goods: buy where they come from, sell farther along the road */
 const WARES = {
@@ -950,14 +950,14 @@ function dailyDistance(region) {
 const eaters = () => alive().length + (S.guest ? 1 : 0);
 function eatDay() {
   const n = eaters();
-  let need = n * [0, 2.5, 1.75, 1][S.rations];
+  let need = n * [0, 2.9, 2, 1.2][S.rations];
   if (S.army) need = Math.max(0, need - n);
   S.food = Math.max(0, S.food - need);
   return need > 0 && S.food <= 0;
 }
 function drinkDay(dry, rest) {
   if (!dry || S.atNode) return false;
-  let use = dry * 0.6 * (S.weather.temp >= 5 ? 1.5 : S.weather.temp === 4 ? 1.15 : 1);
+  let use = dry * 0.72 * (S.weather.temp >= 5 ? 1.5 : S.weather.temp === 4 ? 1.15 : 1);
   if (rest) use *= 0.8;
   if (S.nightDays > 0) use *= 0.75;
   S.water = Math.max(0, S.water - use);
@@ -983,10 +983,10 @@ function updateHealth(rest, starving, thirsty, region) {
   const t = S.weather.temp;
   for (const m of a) {
     let d = 0;
-    if (!rest) d += S.army ? -2 : [0, -1.3, -2.6, -4][S.pace];
-    d += [0, 0.4, -0.7, -1.8][S.rations];
-    if (!m.sick && !m.inj) d += 0.3;
-    if (rest) d += (S.segFrom === 'rabat' && S.atNode ? 6 : 4) + (has('otabek') ? 1 : 0) + (has('yaqub') ? 1 : 0);
+    if (!rest) d += S.army ? -2.3 : [0, -1.6, -3, -4.5][S.pace];
+    d += [0, 0.3, -1, -2.2][S.rations];
+    if (!m.sick && !m.inj) d += 0.2;
+    if (rest) d += (S.segFrom === 'rabat' && S.atNode ? 5 : 3.2) + (has('otabek') ? 1 : 0) + (has('yaqub') ? 1 : 0);
     if (t === 4) d -= 0.4;
     if (t === 5) d -= S.nightDays ? 0.6 : region === 'desert' ? 2.4 : 1.6;
     if (t === 1 && coatsShort) d -= 1.5;
@@ -1004,7 +1004,7 @@ function updateHealth(rest, starving, thirsty, region) {
     m.hp = clamp(m.hp + d, 0, 100);
     if (m.hp < 25 && !m.warned && m.hp > 0) { m.warned = true; deaths.push({ warn: m }); } else if (m.hp > 45) m.warned = false;
     let dead = m.hp <= 0;
-    if (!dead && (m.sick || m.inj) && m.hp < 22 && chance(m.sick === 'plague' ? 0.25 : 0.16)) dead = true;
+    if (!dead && (m.sick || m.inj) && m.hp < 22 && chance(m.sick === 'plague' ? 0.3 : 0.2)) dead = true;
     if (dead && S.flags.blessed) { S.flags.blessed = false; m.hp = 12; m.sick = null; m.inj = null; deaths.push({ saved: m }); continue; }
     if (dead) { const cause = causeOf(m, starving, thirsty, t <= 1 && coatsShort); m.alive = false; m.hp = 0; deaths.push({ m, cause }); }
   }
@@ -1227,7 +1227,7 @@ function banterEvent() {
   return msg(line === 'fact' ? `Aybike says: “${pick(CAMEL_FACTS)}”` : line, { who: 'p' + i, emo: pick(['heart', 'note', 'sparkle']) });
 }
 const EVENTS = [
-  { w: c => (11 + (S.pace - 1) * 4 + (S.rations - 1) * 3 + (avgHp() < 50 ? 4 : 0) + (S.army ? 3 : 0)) * ((S.ward || 0) > S.day ? 0.4 : 1), run: c => { const m = healthyPick(); return m ? sickEvent(m, pickIllness(c)) : null; } },
+  { w: c => (13 + (S.pace - 1) * 4 + (S.rations - 1) * 3 + (avgHp() < 50 ? 4 : 0) + (S.army ? 3 : 0)) * ((S.ward || 0) > S.day ? 0.4 : 1), run: c => { const m = healthyPick(); return m ? sickEvent(m, pickIllness(c)) : null; } },
   { w: c => c.rest ? 1 : 4, run: c => {
       const m = healthyPick(); if (!m || m.inj) return null;
       const kind = weighted({ arm: 25, leg: 14, bite: S.camels ? 30 : 0, scorpion: (c.region === 'desert' || c.region === 'khorasan') ? 15 : 0, snake: (c.region === 'desert' || c.region === 'oasis') ? 10 : 0 });
@@ -1236,7 +1236,7 @@ const EVENTS = [
       const biter = kind === 'bite' ? (camelIdx('Sultan') >= 0 ? 'Sultan' : someCamel()) : null;
       return msg(kind === 'bite' ? `${biter} has bitten ${m.leader ? 'you' : esc(m.name)}. ${biter === 'Sultan' ? 'Sultan feels this settles the question of who is in charge.' : 'Nobody knows why.'}` : `${who(m)} ${second(m, INJ[kind].has)}.${has('anahit') && m.name !== 'Anahit' ? ' Anahit sets it, scolding the whole time.' : ''}`, { sound: 'bad', who: 'p' + S.party.indexOf(m), emo: 'sweat' });
     } },
-  { w: c => S.camels > 0 ? (2.5 + (S.pace === 3 ? 4 : 0) + (c.thirsty ? 6 : 0)) * (S.occ === 'herder' ? 0.5 : 1) * (has('aybike') ? 0.5 : 1) * (S.items.bead ? 0.6 : 1) : 0, run: () => camelDeath('{c} lies down in the road in the morning and does not get up.') },
+  { w: c => S.camels > 0 ? (3.4 + (S.pace === 3 ? 4 : 0) + (c.thirsty ? 6 : 0)) * (S.occ === 'herder' ? 0.5 : 1) * (has('aybike') ? 0.5 : 1) * (S.items.bead ? 0.6 : 1) : 0, run: () => camelDeath('{c} lies down in the road in the morning and does not get up.') },
   { w: c => S.camels > 0 && !c.rest ? 2.5 : 0, run: () => { const nm = someCamel(); loseDays(1); if (chance(has('aybike') ? 0.12 : 0.3)) { loseCamels(1, camelIdx(nm)); return msg(`${nm} wandered off in the night. You spend a day looking. You do not find ${nm}. Somewhere out there a camel is living its best life.`, { sound: 'bad' }); } return msg(`${nm} wandered off in the night. You spend a day finding ${nm}. ${nm} is not sorry.`); } },
   { w: () => S.army ? 0 : 3, run: () => { const s = stealable(); return s ? msg(`A thief comes during the night and steals ${s}.`, { sound: 'bad' }) : null; } },
   { w: c => c.rest ? 0 : ({ desert: 4, plateau: 2.5, khorasan: 2.5, mountain: 3, oasis: 1.2 }[c.region]), run: c => {
@@ -1337,7 +1337,7 @@ const EVENTS = [
 function rollEvent(c) {
   if (S.traveled < 12 && !c.rest) return null;
   if (S.day - (S.lastEvDay || -99) < 3) return null;
-  if (!chance(c.rest ? 0.1 : 0.19)) return null;
+  if (!chance(c.rest ? 0.11 : 0.21)) return null;
   S.lastEvDay = S.day;
   const ws = EVENTS.map(e => Math.max(0, e.w(c) || 0));
   const t = ws.reduce((a, b) => a + b, 0); if (!t) return null;
@@ -3418,7 +3418,7 @@ function buzkEnd() {
 /* ---------- v5: quick start, kit, status hints, barks ---------- */
 function kitFor(money) {
   const k = { camels: 4, food: 1000, coats: 5, bundles: 4, saddles: 2, skins: 10, letter: 1, rue: 2, bead: 1, tiryaq: 2 };
-  const cost = () => k.camels * 40 + k.food * 0.15 + k.coats * 10 + k.bundles * 2 + k.saddles * 10 + k.skins * 4 + k.letter * 30 + k.rue * 2 + k.bead * 6 + k.tiryaq * 12;
+  const cost = () => k.camels * PRICES.camels + k.food * PRICES.food + k.coats * PRICES.coats + k.bundles * PRICES.bundles + k.saddles * PRICES.saddles + k.skins * PRICES.skins + k.letter * 30 + k.rue * 2 + k.bead * 6 + k.tiryaq * 12;
   const cuts = [['tiryaq', 1], ['bead', 0], ['rue', 1], ['tiryaq', 0], ['rue', 0], ['saddles', 1], ['food', 800], ['bundles', 2], ['camels', 3], ['skins', 8], ['coats', 4], ['food', 650], ['saddles', 0], ['letter', 0], ['food', 500]];
   for (const [key, v] of cuts) { if (cost() <= money * 0.92) break; k[key] = v; }
   return k;
@@ -3434,7 +3434,7 @@ function quickStart() {
       S.party = [mkMember(v, true), ...[1, 2, 3, 4].map(i => mkMember(CREW[i].name, false))];
       S.day = dayOf(3, 1); S.herd = []; S.camels = 0;
       const k = kitFor(S.money); k.camels += 1;
-      const cost = k.camels * 40 + k.food * 0.15 + k.coats * 10 + k.bundles * 2 + k.saddles * 10 + k.skins * 4 + k.letter * 30 + k.rue * 2 + k.bead * 6 + k.tiryaq * 12;
+      const cost = k.camels * PRICES.camels + k.food * PRICES.food + k.coats * PRICES.coats + k.bundles * PRICES.bundles + k.saddles * PRICES.saddles + k.skins * PRICES.skins + k.letter * 30 + k.rue * 2 + k.bead * 6 + k.tiryaq * 12;
       S.money = Math.round((S.money - cost) * 100) / 100; addCamels(k.camels); S.food += k.food; S.coats += k.coats; S.arrows += k.bundles * 20; S.saddles += k.saddles; S.skins += k.skins; S.letter = !!k.letter; S.items.rue = k.rue; S.items.bead = k.bead; S.items.tiryaq = k.tiryaq; S.water = S.skins;
       sfx.coin(); save(); departTabriz();
     } }], { focus: false });
@@ -3695,7 +3695,7 @@ function quickStartD() {
       S.party = [mkMember(v, true), ...[1, 2, 3, 4].map(i => mkMember(CREW[i].name, false))];
       S.day = dayOf(2, 15); S.herd = []; S.camels = 0;
       const k = kitFor(S.money); k.camels += 1;
-      const cost = k.camels * 40 + k.food * 0.15 + k.coats * 10 + k.bundles * 2 + k.saddles * 10 + k.skins * 4 + k.letter * 30 + k.rue * 2 + k.bead * 6 + k.tiryaq * 12;
+      const cost = k.camels * PRICES.camels + k.food * PRICES.food + k.coats * PRICES.coats + k.bundles * PRICES.bundles + k.saddles * PRICES.saddles + k.skins * PRICES.skins + k.letter * 30 + k.rue * 2 + k.bead * 6 + k.tiryaq * 12;
       S.money = Math.round((S.money - cost) * 100) / 100; addCamels(k.camels); S.food += k.food; S.coats += k.coats; S.arrows += k.bundles * 20; S.saddles += k.saddles; S.skins += k.skins; S.letter = !!k.letter; S.items.rue = k.rue; S.items.bead = k.bead; S.items.tiryaq = k.tiryaq; S.water = S.skins;
       sfx.coin(); save(); departDelhi();
     } }], { focus: false });
@@ -3977,7 +3977,7 @@ function quickStartC() {
       S.party = [mkMember(v, true), ...[1, 2, 3, 4].map(i => mkMember(CREW[i].name, false))];
       S.day = dayOf(2, 20); S.herd = []; S.camels = 0;
       const k = kitFor(S.money); k.camels += 1;
-      const cost = k.camels * 40 + k.food * 0.15 + k.coats * 10 + k.bundles * 2 + k.saddles * 10 + k.skins * 4 + k.letter * 30 + k.rue * 2 + k.bead * 6 + k.tiryaq * 12;
+      const cost = k.camels * PRICES.camels + k.food * PRICES.food + k.coats * PRICES.coats + k.bundles * PRICES.bundles + k.saddles * PRICES.saddles + k.skins * PRICES.skins + k.letter * 30 + k.rue * 2 + k.bead * 6 + k.tiryaq * 12;
       S.money = Math.round((S.money - cost) * 100) / 100; addCamels(k.camels); S.food += k.food; S.coats += k.coats + 1; S.arrows += k.bundles * 20; S.saddles += k.saddles; S.skins += k.skins; S.letter = !!k.letter; S.items.rue = k.rue; S.items.bead = k.bead; S.items.tiryaq = k.tiryaq; S.water = S.skins;
       sfx.coin(); S.atNode = true; save();
       setScene('node', { node: 'constantinople' });
